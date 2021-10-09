@@ -1,3 +1,8 @@
+/**
+ * Permite una interacción más senzilla con la libreria RegEx
+ * @author Roger Miranda
+ */
+
 #pragma once
 
 #include <unistd.h>
@@ -15,9 +20,9 @@
  * Evita estar creando constantemente la misma expresión.
  */
 typedef struct {
-    regex_t re;
-    regmatch_t *rm;
-    bool valid;
+	regex_t re;
+	regmatch_t *rm;
+	bool valid;
 } RegEx;
 
 /**

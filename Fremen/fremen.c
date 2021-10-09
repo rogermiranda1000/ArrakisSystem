@@ -1,5 +1,6 @@
 #include "fremen.h"
 
 int main(int argc,char *argv[]) {
-	return 0;
+	if (argc < 2) return 1;
+	return executeProgram(argv[1], &argv[1]);
 }
