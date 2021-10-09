@@ -24,11 +24,21 @@
 	r; /* return */										\
 })
 
-int executeProgram(char *cmd, char *argv[]) {
+#define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
+
+int executeProgram(char *cmd, char *argv[], char *envp[]) {
 	int r = CREATE_FORK_ERROR;
-	pid_t son = FORK_CODE(exit(execv(cmd, argv)),);
+	
+	// obtiene la ruta absoluta
+	char *absolute_cmd = (char*)malloc(sizeof(char)*(strlen(cmd) + 1 + STATIC_STRING_LEN(LINUX_PROGRAM_DIR)));
+	strcpy(absolute_cmd, LINUX_PROGRAM_DIR);
+	strcat(absolute_cmd, cmd);
+	
+	pid_t son = FORK_CODE(exit(execvpe(absolute_cmd, argv, envp)),);
 	if (son != CREATE_FORK_ERROR) {
 		if (waitpid(son, &r, WUNTRACED | WCONTINUED) == -1) r = WAIT_FORK_ERROR;
 	}
+	
+	free(absolute_cmd);
 	return r;
 }
