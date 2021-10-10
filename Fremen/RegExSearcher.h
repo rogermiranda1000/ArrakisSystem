@@ -27,7 +27,8 @@ typedef struct {
 
 /**
  * Inicia una expresión regular.
- * @param regex Expresión en texto
+ * @param regex 		Expresión en texto
+ * @param ignore_case 	Si el regex deberia ser caseinsensitive
  * @return La expresión creada (si no se pudo crear, se muestra el error y el parámetro valid vale false). Al terminar hay que llamar destroyRegEx().
  */
 RegEx regExInit(char *regex, bool ignore_case);
