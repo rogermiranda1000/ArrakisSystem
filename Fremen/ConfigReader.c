@@ -30,14 +30,14 @@ char *readUntil(int fd, char delimiter) {
 	return r;
 }
 
-int readConfig(char* name, unsigned int* timeClean, char* ip, unsigned int* port, char* directory) {
+int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned int* port, char** directory) {
 	int file = open(name, O_RDONLY);
 	if (file == 0) {
 		return -1;
 	}
 	*timeClean = readInteger(file, '\n');
-	ip = readUntil(file, '\n');
+	*ip = readUntil(file, '\n');
 	*port = readInteger(file, '\n');
-	directory = readUntil(file, '\n');
+	*directory = readUntil(file, '\n');
 	return 0;
 }

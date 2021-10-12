@@ -2,6 +2,7 @@
 
 #include "RegExSearcher.h"
 #include "ProgramLauncher.h"
+#include "ConfigReader.h"
 #include <string.h>
 #include <stdbool.h>
 
