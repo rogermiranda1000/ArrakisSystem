@@ -1,6 +1,5 @@
-#inclide "ConfigReader.h"
-#include <fcntl.h>
-#include <stdlib.h>
+#include "ConfigReader.h"
+
 
 int readInteger(int fd, char delimiter) {
 	char aux;
@@ -33,7 +32,7 @@ char *readUntil(int fd, char delimiter) {
 
 int readConfig(char* name, unsigned int* timeClean, char* ip, unsigned int* port, char* directory) {
 	int file = open(name, O_RDONLY);
-	if (file != 0) {
+	if (file == 0) {
 		return -1;
 	}
 	*timeClean = readInteger(file, '\n');

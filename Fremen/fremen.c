@@ -1,5 +1,7 @@
 #include "fremen.h"
 
+#define ERROR_FILE "Error al llegir el fitxer de configuració\n"
+
 int main(int argc, char *argv[], char *envp[]) {
 	if (argc < 2) return 1;
 	
@@ -8,8 +10,9 @@ int main(int argc, char *argv[], char *envp[]) {
 	char* ip;
 	unsigned int port;
 	char* directory;
-	readConfig(argv[0], name, &timeClean, ip, &port, directory);
-	
+	if (readConfig(argv[0], name, &timeClean, ip, &port, directory) != 0) write(DESCRIPTOR_SCREEN, ERROR_FILE, sizeof(ERROR_FILE)/sizeof(char));
+	printf("%s, %d, %s, %d, %s", name, ip, port, directory);
+		
 	RegEx login_regex = regExInit("^LOGIN (\\S+) ([0-9]+)$", true);
 	char login[80], code[80];
 	int r = regExGet(&login_regex, "lOgIn roger.miranda 08760", login, code);
