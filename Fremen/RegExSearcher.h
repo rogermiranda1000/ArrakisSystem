@@ -27,6 +27,7 @@ typedef struct {
 
 /**
  * Inicia una expresión regular.
+ * /!\ Debe ser liberada llamando regExDestroy /!\
  * @param regex 		Expresión en texto
  * @param ignore_case 	Si el regex deberia ser caseinsensitive
  * @return La expresión creada (si no se pudo crear, se muestra el error y el parámetro valid vale false). Al terminar hay que llamar destroyRegEx().
@@ -48,6 +49,7 @@ void regExDestroy(RegEx *regex);
 
 /**
  * Busca una coincidencia de la expresión.
+ * /!\ matches y cada uno de sus elementos debe ser liberado /!\
  * @param regex Expresión a buscar
  * @param line Texto donde buscar
  * @param matches Coincidencias
