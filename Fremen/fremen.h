@@ -10,4 +10,11 @@
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
+typedef enum {
+	WAITING,	// en un read()
+	EXIT,		// ha saltat interrupció estant en estat 'RUNNING'; apaga quan pugui
+	RUNNING		// està treballant
+} Status;
+
 int main(int argc, char *argv[], char *envp[]);
+void intHandler(int signum);
