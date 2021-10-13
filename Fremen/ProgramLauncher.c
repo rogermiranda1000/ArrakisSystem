@@ -42,3 +42,31 @@ int executeProgram(char *cmd, char *argv[], char *envp[]) {
 	free(absolute_cmd);
 	return r;
 }
+
+int executeProgramLine(char *cmd, char *envp[]) {
+	int r, size = 0;
+	char **argv = NULL;
+	char *iter = cmd;
+	
+	argv = (char**)malloc(sizeof(char*));
+	argv[size++] = iter;
+	
+	while (*iter != '\0') {
+		if (*iter == ' ') {
+			*iter = '\0';
+			argv = (char**)realloc(argv, sizeof(char*)*(size+1));
+			argv[size++] = iter+1;
+		}
+		iter++;
+	}
+	
+	// l'últim element ha d'acabar en NULL
+	argv = (char**)realloc(argv, sizeof(char*)*(size+1));
+	argv[size++] = NULL;
+	
+	r = executeProgram(argv[0], argv, envp);
+	
+	free(argv);
+	
+	return r;
+}

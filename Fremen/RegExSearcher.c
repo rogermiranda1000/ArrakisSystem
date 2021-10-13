@@ -69,6 +69,14 @@ int regExSearch(RegEx *regex, char *line, char ***matches) {
 	return EXIT_SUCCESS;
 }
 
+void regExSearchFree(RegEx *regex, char ***matches) {
+	if (*matches != NULL) {
+		for (int x = 0; x < regExMatchesSize(regex); x++) free((*matches)[x]);
+	}
+	free(*matches);
+	*matches = NULL;
+}
+
 int regExGet(RegEx *regex, char *line, ...) {
 	va_list args;
 	char **matches, *next;

@@ -33,7 +33,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	
 	int r;
 	char *input = NULL, **output;
-	RegEx login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+([0-9]+)$", true),
+	RegEx login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+(" REGEX_INTEGER ")$", true),
 		logout_regex = regExInit("^LOGOUT$", true);
 	
 	// TODO tmp
@@ -41,7 +41,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s\n", timeClean, ip, port, directory));
 	
 	while (current_status != EXIT) {
-		if (input != NULL) free(input); // allibera l'últim readUntil
+		free(input); // allibera l'últim readUntil
 		input = NULL;
 		
 		current_status = WAITING;
@@ -51,7 +51,8 @@ int main(int argc, char *argv[], char *envp[]) {
 		
 		r = regExSearch(&login_regex, input, &output);
 		if (r == MALLOC_ERROR) {
-			// TODO free
+			write(DESCRIPTOR_ERROR, ERROR_MALLOC, STATIC_STRING_LEN(ERROR_MALLOC));
+			regExSearchFree(&login_regex, &output);
 		}
 		else if (r == EXIT_SUCCESS) {
 			//int code_int = atoi(code);
@@ -73,9 +74,8 @@ int main(int argc, char *argv[], char *envp[]) {
 			break;
 		}
 		
-		// any match
-		write(DESCRIPTOR_ERROR, "Comanda invalida\n", sizeof("Comanda invalida\n")/sizeof(char));
-		if (executeProgram(argv[1], &argv[1], envp) != 0) write(DESCRIPTOR_ERROR, "Error en executar la comanda\n", sizeof("Error en executar la comanda\n")/sizeof(char)); // TODO error
+		// no match
+		if (executeProgramLine(input, envp) != 0) write(DESCRIPTOR_ERROR, "Error en executar la comanda\n", sizeof("Error en executar la comanda\n")/sizeof(char)); // TODO error
 	}
 	
 	// alliberar memòria

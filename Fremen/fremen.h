@@ -14,6 +14,7 @@
 
 #define ERROR_FILE "Error al llegir el fitxer de configuració\n"
 #define ERROR_ARGS "Has d'indicar el nom del fitxer de configuració\n"
+#define ERROR_MALLOC "Malloc error, torna a intentar-ho quan Matagalls no estigui tant saturat\n"
 
 typedef enum {
 	WAITING,	// en un read()

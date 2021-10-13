@@ -13,7 +13,9 @@
 #include <stdarg.h>		// argumento '...'
 #include <regex.h>
 
-#define MALLOC_ERROR -1
+#define MALLOC_ERROR 	-1
+
+#define REGEX_INTEGER	"[0-9]{1,9}"
 
 /**
  * Contiene una expresión creada, y información de control.
@@ -56,6 +58,13 @@ void regExDestroy(RegEx *regex);
  * @return Éxito (EXIT_SUCCESS), fallo (EXIT_FAILURE), sin coincidencia (REG_NOMATCH), o sin memoria (MALLOC_ERROR)
  */
 int regExSearch(RegEx *regex, char *line, char ***matches);
+
+/**
+ * Libera matches y sus elementos
+ * @param regex 	usado al llamar regExSearch
+ * @param matches 	Coincidencias
+ */
+void regExSearchFree(RegEx *regex, char ***matches);
 
 /**
  * Busca una coincidencia de la expresión, pero con un estilo similar al de la función scanf.
