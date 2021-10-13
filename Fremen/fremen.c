@@ -9,7 +9,7 @@ void intHandler(int signum) {
 	}
 	else {
 		current_status = EXIT;
-		raise(SIGINT);
+		//raise(SIGINT);
 	}
 }
 
@@ -31,17 +31,17 @@ int main(int argc, char *argv[], char *envp[]) {
 		exit(EXIT_FAILURE);
 	}
 	
-	char *input = NULL;
 	int r;
-	RegEx login_regex = regExInit("^LOGIN (\\S+) ([0-9]+)$", true),
+	char *input = NULL, **output;
+	RegEx login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+([0-9]+)$", true),
 		logout_regex = regExInit("^LOGOUT$", true);
 	
 	// TODO tmp
-	char buffer[100], login[80], code[80];
+	char buffer[100];
 	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s\n", timeClean, ip, port, directory));
 	
 	while (current_status != EXIT) {
-		free(input); // allibera l'últim readUntil
+		if (input != NULL) free(input); // allibera l'últim readUntil
 		input = NULL;
 		
 		current_status = WAITING;
@@ -49,18 +49,26 @@ int main(int argc, char *argv[], char *envp[]) {
 		if (current_status == EXIT) break;
 		current_status = RUNNING;
 		
-		r = regExGet(&login_regex, input, login, code);
-		if (r == EXIT_SUCCESS) {
+		r = regExSearch(&login_regex, input, &output);
+		if (r == MALLOC_ERROR) {
+			// TODO free
+		}
+		else if (r == EXIT_SUCCESS) {
 			//int code_int = atoi(code);
-			write(DESCRIPTOR_SCREEN, login, strlen(login));
+			write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // login
 			write(DESCRIPTOR_SCREEN, " ", sizeof(char));
-			write(DESCRIPTOR_SCREEN, code, strlen(code));
+			write(DESCRIPTOR_SCREEN, output[1], strlen(output[1])); // code
 			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+			
+			// frees
+			free(output[0]);
+			free(output[1]);
+			free(output);
+			
 			continue;
 		}
 		
-		r = regExGet(&logout_regex, input);
-		if (r == EXIT_SUCCESS) {
+		if (regExGet(&logout_regex, input) == EXIT_SUCCESS) {
 			current_status = EXIT;
 			break;
 		}

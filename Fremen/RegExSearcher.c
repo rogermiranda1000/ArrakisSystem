@@ -38,18 +38,22 @@ void regExDestroy(RegEx *regex) {
 int regExSearch(RegEx *regex, char *line, char ***matches) {
 	int retval, size, characters;
 
+	*matches = NULL;
 	if (!regex->valid) return EXIT_FAILURE;
 
 	if ((retval = regexec(&regex->re, line, regExMatchesSize(regex)+1, regex->rm, 0)) == 0) {
 		size = regExMatchesSize(regex);
+		if (size == 0) return EXIT_SUCCESS;
 		*matches = (char**)malloc(sizeof(char*) * size);
 		if (*matches == NULL) return MALLOC_ERROR;
 
+		for (int x = 0; x < size; x++) (*matches)[x] = NULL; // TODO memset
 		for (int x = 0; x < size; x++) {
 			characters = (int)(regex->rm[x+1].rm_eo - regex->rm[x+1].rm_so);
 			(*matches)[x] = (char*) malloc(sizeof(char) * (characters + 1));
 			if ((*matches)[x] == NULL) return MALLOC_ERROR;
-			strncpy((*matches)[x], line + regex->rm[x+1].rm_so, characters+1);
+			strncpy((*matches)[x], &line[regex->rm[x+1].rm_so], characters);
+			(*matches)[x][characters] = '\0';
 		}
 	}
 	else {
