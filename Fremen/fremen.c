@@ -31,35 +31,50 @@ int main(int argc, char *argv[], char *envp[]) {
 		exit(EXIT_FAILURE);
 	}
 	
-	char buffer[100];
-	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s", timeClean, ip, port, directory));
+	char *input = NULL;
+	int r;
+	RegEx login_regex = regExInit("^LOGIN (\\S+) ([0-9]+)$", true),
+		logout_regex = regExInit("^LOGOUT$", true);
 	
-	RegEx login_regex = regExInit("^LOGIN (\\S+) ([0-9]+)$", true);
-	char login[80], code[80], buffer[80];
-	int r, len;
+	// TODO tmp
+	char buffer[100], login[80], code[80];
+	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s\n", timeClean, ip, port, directory));
+	
 	while (current_status != EXIT) {
+		free(input); // allibera l'últim readUntil
+		input = NULL;
+		
 		current_status = WAITING;
-		len = read(0, buffer, 80*sizeof(char));
+		input = readUntil(0, '\n');
 		if (current_status == EXIT) break;
 		current_status = RUNNING;
 		
-		if (len < 0) continue; // TODO error
-		buffer[len-1] = '\0'; // elimina el '\n' i afegeix '\0'
-		
-		r = regExGet(&login_regex, buffer, login, code);
+		r = regExGet(&login_regex, input, login, code);
 		if (r == EXIT_SUCCESS) {
 			//int code_int = atoi(code);
 			write(DESCRIPTOR_SCREEN, login, strlen(login));
 			write(DESCRIPTOR_SCREEN, " ", sizeof(char));
 			write(DESCRIPTOR_SCREEN, code, strlen(code));
 			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+			continue;
 		}
-		else if (r == REG_NOMATCH) {
-			write(DESCRIPTOR_ERROR, "Comanda invalida\n", sizeof("Comanda invalida\n")/sizeof(char));
-			if (executeProgram(argv[1], &argv[1], envp) != 0) write(DESCRIPTOR_ERROR, "Error en executar la comanda\n", sizeof("Error en executar la comanda\n")/sizeof(char)); // TODO error
+		
+		r = regExGet(&logout_regex, input);
+		if (r == EXIT_SUCCESS) {
+			current_status = EXIT;
+			break;
 		}
+		
+		// any match
+		write(DESCRIPTOR_ERROR, "Comanda invalida\n", sizeof("Comanda invalida\n")/sizeof(char));
+		if (executeProgram(argv[1], &argv[1], envp) != 0) write(DESCRIPTOR_ERROR, "Error en executar la comanda\n", sizeof("Error en executar la comanda\n")/sizeof(char)); // TODO error
 	}
+	
+	// alliberar memòria
 	regExDestroy(&login_regex);
+	regExDestroy(&logout_regex);
+	
+	free(input);
 	free(ip);
 	free(directory);
 	
