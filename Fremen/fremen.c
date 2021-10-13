@@ -34,7 +34,10 @@ int main(int argc, char *argv[], char *envp[]) {
 	int r;
 	char *input = NULL, **output;
 	RegEx login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+(" REGEX_INTEGER ")$", true),
-		logout_regex = regExInit("^LOGOUT$", true);
+		logout_regex = regExInit("^LOGOUT$", true),
+		search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true),
+		photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true),
+		send_regex = regExInit("^SEND\\s+(\\S+)$", true);
 	
 	// TODO tmp
 	char buffer[100];
@@ -55,16 +58,54 @@ int main(int argc, char *argv[], char *envp[]) {
 			regExSearchFree(&login_regex, &output);
 		}
 		else if (r == EXIT_SUCCESS) {
-			//int code_int = atoi(code);
 			write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // login
 			write(DESCRIPTOR_SCREEN, " ", sizeof(char));
 			write(DESCRIPTOR_SCREEN, output[1], strlen(output[1])); // code
 			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 			
-			// frees
-			free(output[0]);
-			free(output[1]);
-			free(output);
+			regExSearchFree(&login_regex, &output);
+			
+			continue;
+		}
+		
+		r = regExSearch(&search_regex, input, &output);
+		if (r == MALLOC_ERROR) {
+			write(DESCRIPTOR_ERROR, ERROR_MALLOC, STATIC_STRING_LEN(ERROR_MALLOC));
+			regExSearchFree(&search_regex, &output);
+		}
+		else if (r == EXIT_SUCCESS) {
+			write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // code
+			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+			
+			regExSearchFree(&search_regex, &output);
+			
+			continue;
+		}
+		
+		r = regExSearch(&photo_regex, input, &output);
+		if (r == MALLOC_ERROR) {
+			write(DESCRIPTOR_ERROR, ERROR_MALLOC, STATIC_STRING_LEN(ERROR_MALLOC));
+			regExSearchFree(&photo_regex, &output);
+		}
+		else if (r == EXIT_SUCCESS) {
+			write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
+			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+			
+			regExSearchFree(&photo_regex, &output);
+			
+			continue;
+		}
+		
+		r = regExSearch(&send_regex, input, &output);
+		if (r == MALLOC_ERROR) {
+			write(DESCRIPTOR_ERROR, ERROR_MALLOC, STATIC_STRING_LEN(ERROR_MALLOC));
+			regExSearchFree(&send_regex, &output);
+		}
+		else if (r == EXIT_SUCCESS) {
+			write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // file
+			write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+			
+			regExSearchFree(&send_regex, &output);
 			
 			continue;
 		}
@@ -81,6 +122,9 @@ int main(int argc, char *argv[], char *envp[]) {
 	// alliberar memòria
 	regExDestroy(&login_regex);
 	regExDestroy(&logout_regex);
+	regExDestroy(&search_regex);
+	regExDestroy(&photo_regex);
+	regExDestroy(&send_regex);
 	
 	free(input);
 	free(ip);
