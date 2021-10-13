@@ -8,7 +8,8 @@ RegEx login_regex, logout_regex, search_regex, photo_regex, send_regex;
 void intHandler(int signum) {
 	if (current_status == WAITING) {
 		freeEverything();
-		exit(EXIT_SUCCESS);
+		signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
+		raise(SIGINT);
 	}
 	else {
 		current_status = EXIT;
