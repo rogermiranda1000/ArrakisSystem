@@ -1,7 +1,8 @@
 #pragma once
 
-#include <fcntl.h>
-#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>		// O_RDONLY
+#include <stdlib.h>		// realloc
 
 #define DESCRIPTOR_SCREEN 1
 #define DESCRIPTOR_ERROR 2
@@ -17,4 +18,4 @@
  * @retval -1 		Error al obrir el fitxer
  * @retval 0		OK
  */
-int readConfig(char* name, unsigned int** timeClean, char** ip, unsigned short** port, char** directory);
+int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* port, char** directory);

@@ -29,7 +29,7 @@ char *readUntil(int fd, char delimiter) {
 	return r;
 }
 
-int readConfig(char* name, unsigned int** timeClean, char** ip, unsigned short** port, char** directory) {
+int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* port, char** directory) {
 	int file = open(name, O_RDONLY);
 	if (file < 0) {
 		return -1;
