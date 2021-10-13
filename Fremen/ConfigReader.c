@@ -38,5 +38,6 @@ int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* p
 	*ip = readUntil(file, '\n');
 	*port = readInteger(file, '\n');
 	*directory = readUntil(file, '\n');
+	close(file);
 	return 0;
 }

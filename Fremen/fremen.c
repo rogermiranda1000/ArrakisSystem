@@ -1,6 +1,6 @@
 #include "fremen.h"
 
-Status current_status = RUNNING;
+volatile Status current_status = RUNNING;
 
 void intHandler(int signum) {
 	if (current_status == RUNNING) {
@@ -9,7 +9,7 @@ void intHandler(int signum) {
 	}
 	else {
 		current_status = EXIT;
-		//raise(SIGINT);
+		//goto end; // TODO alguna millor forma de fer-ho?
 	}
 }
 
