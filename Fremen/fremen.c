@@ -14,9 +14,25 @@ void intHandler(int signum) {
 }
 
 int main(int argc, char *argv[], char *envp[]) {
-	if (argc < 2) return 1;
-	
+	unsigned int timeClean;
+	char* ip;
+	unsigned short port;
+	char* directory;
+
 	signal(SIGINT, intHandler); // reprograma Control+C
+	
+	if (argc < 2) {
+		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
+		exit(EXIT_FAILURE);
+	}
+	
+	if (readConfig(argv[1], &timeClean, &ip, &port, &directory) == -1) {
+		write(DESCRIPTOR_ERROR, ERROR_FILE, STATIC_STRING_LEN(ERROR_FILE));
+		exit(EXIT_FAILURE);
+	}
+	
+	char buffer[100];
+	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s", timeClean, ip, port, directory));
 	
 	RegEx login_regex = regExInit("^LOGIN (\\S+) ([0-9]+)$", true);
 	char login[80], code[80], buffer[80];
@@ -44,6 +60,8 @@ int main(int argc, char *argv[], char *envp[]) {
 		}
 	}
 	regExDestroy(&login_regex);
+	free(ip);
+	free(directory);
 	
 	return 0;
 }
