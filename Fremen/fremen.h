@@ -24,3 +24,4 @@ typedef enum {
 
 int main(int argc, char *argv[], char *envp[]);
 void intHandler(int signum);
+void freeEverything();

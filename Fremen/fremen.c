@@ -2,22 +2,23 @@
 
 volatile Status current_status = RUNNING;
 
+char *input = NULL, *ip, *directory;
+RegEx login_regex, logout_regex, search_regex, photo_regex, send_regex;
+
 void intHandler(int signum) {
-	if (current_status == RUNNING) {
-		current_status = EXIT;
-		signal(signum, intHandler); // no hauria de caldre, però per si és un impacient
+	if (current_status == WAITING) {
+		freeEverything();
+		exit(EXIT_SUCCESS);
 	}
 	else {
 		current_status = EXIT;
-		//goto end; // TODO alguna millor forma de fer-ho?
+		signal(signum, intHandler); // no hauria de caldre, però per si és un impacient
 	}
 }
 
 int main(int argc, char *argv[], char *envp[]) {
 	unsigned int timeClean;
-	char* ip;
 	unsigned short port;
-	char* directory;
 
 	signal(SIGINT, intHandler); // reprograma Control+C
 	
@@ -32,12 +33,12 @@ int main(int argc, char *argv[], char *envp[]) {
 	}
 	
 	int r;
-	char *input = NULL, **output;
-	RegEx login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+(" REGEX_INTEGER ")$", true),
-		logout_regex = regExInit("^LOGOUT$", true),
-		search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true),
-		photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true),
-		send_regex = regExInit("^SEND\\s+(\\S+)$", true);
+	char **output;
+	login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+(" REGEX_INTEGER ")$", true);
+	logout_regex = regExInit("^LOGOUT$", true);
+	search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true);
+	photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true);
+	send_regex = regExInit("^SEND\\s+(\\S+)$", true);
 	
 	// TODO tmp
 	char buffer[100];
@@ -49,7 +50,6 @@ int main(int argc, char *argv[], char *envp[]) {
 		
 		current_status = WAITING;
 		input = readUntil(0, '\n');
-		if (current_status == EXIT) break;
 		current_status = RUNNING;
 		
 		r = regExSearch(&login_regex, input, &output);
@@ -119,7 +119,12 @@ int main(int argc, char *argv[], char *envp[]) {
 		if (executeProgramLine(input, envp) != 0) write(DESCRIPTOR_ERROR, "Error en executar la comanda\n", sizeof("Error en executar la comanda\n")/sizeof(char)); // TODO error
 	}
 	
-	// alliberar memòria
+	freeEverything();
+	
+	return 0;
+}
+
+void freeEverything() {
 	regExDestroy(&login_regex);
 	regExDestroy(&logout_regex);
 	regExDestroy(&search_regex);
@@ -129,6 +134,4 @@ int main(int argc, char *argv[], char *envp[]) {
 	free(input);
 	free(ip);
 	free(directory);
-	
-	return 0;
 }
