@@ -1,3 +1,8 @@
+/**
+ * Permite una interacción más senzilla con la libreria RegEx
+ * @author Roger Miranda
+ */
+
 #pragma once
 
 #include <unistd.h>
@@ -8,21 +13,25 @@
 #include <stdarg.h>		// argumento '...'
 #include <regex.h>
 
-#define MALLOC_ERROR -1
+#define MALLOC_ERROR 	-1
+
+#define REGEX_INTEGER	"[0-9]{1,9}"
 
 /**
  * Contiene una expresión creada, y información de control.
  * Evita estar creando constantemente la misma expresión.
  */
 typedef struct {
-    regex_t re;
-    regmatch_t *rm;
-    bool valid;
+	regex_t re;
+	regmatch_t *rm;
+	bool valid;
 } RegEx;
 
 /**
  * Inicia una expresión regular.
- * @param regex Expresión en texto
+ * /!\ Debe ser liberada llamando regExDestroy /!\
+ * @param regex 		Expresión en texto
+ * @param ignore_case 	Si el regex deberia ser caseinsensitive
  * @return La expresión creada (si no se pudo crear, se muestra el error y el parámetro valid vale false). Al terminar hay que llamar destroyRegEx().
  */
 RegEx regExInit(char *regex, bool ignore_case);
@@ -42,12 +51,20 @@ void regExDestroy(RegEx *regex);
 
 /**
  * Busca una coincidencia de la expresión.
+ * /!\ matches y cada uno de sus elementos debe ser liberado /!\
  * @param regex Expresión a buscar
  * @param line Texto donde buscar
  * @param matches Coincidencias
  * @return Éxito (EXIT_SUCCESS), fallo (EXIT_FAILURE), sin coincidencia (REG_NOMATCH), o sin memoria (MALLOC_ERROR)
  */
 int regExSearch(RegEx *regex, char *line, char ***matches);
+
+/**
+ * Libera matches y sus elementos
+ * @param regex 	usado al llamar regExSearch
+ * @param matches 	Coincidencias
+ */
+void regExSearchFree(RegEx *regex, char ***matches);
 
 /**
  * Busca una coincidencia de la expresión, pero con un estilo similar al de la función scanf.

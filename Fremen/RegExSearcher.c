@@ -25,61 +25,73 @@ RegEx regExInit(char *regex, bool ignore_case) {
 }
 
 int regExMatchesSize(RegEx *regex) {
-    return regex->re.re_nsub;
+	return regex->re.re_nsub;
 }
 
 void regExDestroy(RegEx *regex) {
-    regfree(&regex->re);
-    if (regex->rm != NULL) free(regex->rm);
-    regex->rm = NULL;
-    regex->valid = false;
+	regfree(&regex->re);
+	if (regex->rm != NULL) free(regex->rm);
+	regex->rm = NULL;
+	regex->valid = false;
 }
 
 int regExSearch(RegEx *regex, char *line, char ***matches) {
-    int retval, size, characters;
+	int retval, size, characters;
 
-    if (!regex->valid) return EXIT_FAILURE;
+	*matches = NULL;
+	if (!regex->valid) return EXIT_FAILURE;
 
-    if ((retval = regexec(&regex->re, line, regExMatchesSize(regex)+1, regex->rm, 0)) == 0) {
+	if ((retval = regexec(&regex->re, line, regExMatchesSize(regex)+1, regex->rm, 0)) == 0) {
 		size = regExMatchesSize(regex);
-        *matches = (char**)malloc(sizeof(char*) * size);
-        if (*matches == NULL) return MALLOC_ERROR;
+		if (size == 0) return EXIT_SUCCESS;
+		*matches = (char**)malloc(sizeof(char*) * size);
+		if (*matches == NULL) return MALLOC_ERROR;
 
-        for (int x = 0; x < size; x++) {
-            characters = (int)(regex->rm[x+1].rm_eo - regex->rm[x+1].rm_so);
-            (*matches)[x] = (char*) malloc(sizeof(char) * (characters + 1));
-            if ((*matches)[x] == NULL) return MALLOC_ERROR;
-            strncpy((*matches)[x], line + regex->rm[x+1].rm_so, characters+1);
-        }
-    }
-    else {
-        if (retval == REG_NOMATCH) {
-            return REG_NOMATCH;
-        } else {
-            // TODO: que error?
-            //regerror(retval);
-            return EXIT_FAILURE;
-        }
-    }
+		for (int x = 0; x < size; x++) (*matches)[x] = NULL; // TODO memset
+		for (int x = 0; x < size; x++) {
+			characters = (int)(regex->rm[x+1].rm_eo - regex->rm[x+1].rm_so);
+			(*matches)[x] = (char*) malloc(sizeof(char) * (characters + 1));
+			if ((*matches)[x] == NULL) return MALLOC_ERROR;
+			strncpy((*matches)[x], &line[regex->rm[x+1].rm_so], characters);
+			(*matches)[x][characters] = '\0';
+		}
+	}
+	else {
+		if (retval == REG_NOMATCH) {
+			return REG_NOMATCH;
+		} else {
+			// TODO: que error?
+			//regerror(retval);
+			return EXIT_FAILURE;
+		}
+	}
 
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
+}
+
+void regExSearchFree(RegEx *regex, char ***matches) {
+	if (*matches != NULL) {
+		for (int x = 0; x < regExMatchesSize(regex); x++) free((*matches)[x]);
+	}
+	free(*matches);
+	*matches = NULL;
 }
 
 int regExGet(RegEx *regex, char *line, ...) {
-    va_list args;
-    char **matches, *next;
-    int r = regExSearch(regex, line, &matches);
+	va_list args;
+	char **matches, *next;
+	int r = regExSearch(regex, line, &matches);
 
-    va_start(args, line); // el segundo argumento debe ser el último argumento válido de la función
+	va_start(args, line); // el segundo argumento debe ser el último argumento válido de la función
 
-    if (r == EXIT_SUCCESS) {
-        for (int x = 0; x < regExMatchesSize(regex); x++) {
-            next = va_arg(args, char*);
-            if (next == NULL) continue;
-            strncpy(next, matches[x], strlen(matches[x])+1);
-            free(matches[x]);
-        }
-        free(matches);
-    }
-    return r;
+	if (r == EXIT_SUCCESS) {
+		for (int x = 0; x < regExMatchesSize(regex); x++) {
+			next = va_arg(args, char*);
+			if (next == NULL) continue;
+			strncpy(next, matches[x], strlen(matches[x])+1);
+			free(matches[x]);
+		}
+		free(matches);
+	}
+	return r;
 }
