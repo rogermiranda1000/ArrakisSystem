@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RegExSearcher.h"
 #include "ProgramLauncher.h"
 #include "ConfigReader.h"
+#include "Commands.h"
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h> // exit
@@ -12,9 +12,12 @@
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-#define ERROR_FILE "Error al llegir el fitxer de configuració\n"
-#define ERROR_ARGS "Has d'indicar el nom del fitxer de configuració\n"
-#define ERROR_MALLOC "Malloc error, torna a intentar-ho quan Matagalls no estigui tant saturat\n"
+#define LOGOUT_MSG		"Tancant Fremen...\n"
+
+#define ERROR_FILE 		"Error al llegir el fitxer de configuració\n"
+#define ERROR_ARGS 		"Has d'indicar el nom del fitxer de configuració\n"
+#define ERROR_MALLOC 	"Malloc error, torna a intentar-ho quan Matagalls no estigui tant saturat\n"
+#define ERROR_EXECUTE	"Error en executar la comanda\n"
 
 typedef enum {
 	WAITING,	// en un read()
