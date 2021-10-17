@@ -7,12 +7,14 @@ char *input = NULL;
 
 void ctrlCHandler() {
 	if (current_status == WAITING) {
-		freeEverything();
+		terminate();
+		
 		signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 		raise(SIGINT);
 	}
 	else {
 		current_status = EXIT;
+		
 		signal(SIGINT, ctrlCHandler); // no hauria de caldre, però per si és un impacient
 	}
 }
@@ -22,6 +24,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	unsigned short port;
 
 	signal(SIGINT, ctrlCHandler); // reprograma Control+C
+	signal(SIGPWR, freeEverything); // per si marcha la llum
 	
 	if (argc < 2) {
 		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -95,14 +98,17 @@ int main(int argc, char *argv[], char *envp[]) {
 		}
 	}
 	
-	freeEverything();
+	terminate();
 	
 	return 0;
 }
 
-void freeEverything() {
+void terminate() {
 	write(DESCRIPTOR_SCREEN, LOGOUT_MSG, STATIC_STRING_LEN(LOGOUT_MSG));
-	
+	freeEverything();
+}
+
+void freeEverything() {
 	freeCommands();
 	
 	free(input);

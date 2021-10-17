@@ -26,5 +26,18 @@ typedef enum {
 } Status;
 
 int main(int argc, char *argv[], char *envp[]);
-void intHandler(int signum);
+
+/**
+ * Acaba el programa o marca un flag indicant que ha d'acabar
+ */
+void ctrlCHandler();
+
+/**
+ * Crida a freeEverything(), donant abans un missatge informatiu
+ */
+void terminate();
+
+/**
+ * Allibera tota memoria global reservada
+ */
 void freeEverything();
