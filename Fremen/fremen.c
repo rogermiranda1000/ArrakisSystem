@@ -39,10 +39,6 @@ int main(int argc, char *argv[], char *envp[]) {
 	char **output;
 	initCommands();
 	
-	// tmp (si no surt warning)
-	char buffer[100];
-	write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%d, %s, %d, %s\n", timeClean, ip, port, directory));
-	
 	while (current_status != EXIT) {
 		free(input); // allibera l'últim readUntil
 		input = NULL;
