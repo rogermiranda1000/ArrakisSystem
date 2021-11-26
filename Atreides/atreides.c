@@ -47,9 +47,11 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	
-	char *directory;
-	if (readConfig(argv[1], &ip, &port, &directory) != -1) {
+	char *directory = NULL;
+	if (readConfig(argv[1], &ip, &port, &directory) == -1) {
 		write(DESCRIPTOR_ERROR, ERROR_CONFIG_FILE, STATIC_STRING_LEN(ERROR_CONFIG_FILE));
+		free(ip);
+		free(directory);
 		exit(EXIT_FAILURE);
 	}
 	concat(&users_file_path, ".%s/%s", directory, USERS_FILE);
