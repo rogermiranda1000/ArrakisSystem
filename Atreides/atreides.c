@@ -1,10 +1,24 @@
 #include "atreides.h"
 
-char *ip = NULL, *directory = NULL;
+char *ip = NULL, *users_file_path = NULL;
+
+/**
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
+ * /!\ Cal fer el free del buffer /!\
+ * @param buffer	On es guardarà el resultat (char**)
+ * @param format	Format (com a sprintf)
+ * @param ...		Paràmetres del format (com a sprintf)
+ * @return			String resultant
+ */
+#define concat(buffer, format, ...) ({													\
+	size_t size = snprintf(NULL, 0, format, __VA_ARGS__); /* obtè la mida resultant */	\
+	*buffer = (char*)malloc(size+1);													\
+	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
+})
 
 void ctrlCHandler() {
 	free(ip);
-	free(directory);
+	free(users_file_path);
 }
 
 int main(int argc, char *argv[]) {
@@ -18,11 +32,17 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	
+	
+	char *directory;
 	if (readConfig(argv[1], &ip, &port, &directory) != -1) {
 		// TODO
 		exit(EXIT_FAILURE);
 	}
-
+	concat(&users_file_path, "%s/%s", directory, USERS_FILE)
+	free(directory);
+	
+	loadUsersFile(users_file_path);
+	
 	// Crea el socket
 	if ((socketFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		write(DESCRIPTOR_ERROR, ERROR_SOCKET, STATIC_STRING_LEN(ERROR_SOCKET));

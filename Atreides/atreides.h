@@ -13,4 +13,6 @@
 #define ERROR_BIND				"Error haciendo el bind\n"
 #define ERROR_LISTEN			"Error haciendo el listen\n"
 
+#define USERS_FILE				"registeredUsers.txt"
+
 int main(int argc, char *argv[]);
