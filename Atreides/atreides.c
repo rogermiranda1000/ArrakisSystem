@@ -6,7 +6,8 @@
 
 char *ip = NULL, *users_file_path = NULL;
 RegEx command_regex, login_regex;
-int socketFD;
+int socketFD, num_threads = 0;
+pthread_t *threads = NULL;
 // TODO player FD
 
 #define REGEX_INTEGER	"[0-9]{1,9}"
@@ -26,16 +27,37 @@ int socketFD;
 })
 
 void ctrlCHandler() {
+	
+	int result;
+	void *r;
+	for (;num_threads > 0; num_threads--) {
+		result = pthread_join(threads[num_threads-1], &r);
+		if (result != 0) {
+			write(DESCRIPTOR_ERROR, ERROR_JOIN, STATIC_STRING_LEN(ERROR_JOIN));
+		}
+		free(threads[num_threads-1]);
+	}
 	saveUsersFile(users_file_path);
 	
 	regExDestroy(&command_regex);
 	regExDestroy(&login_regex);
-	
+
 	free(ip);
 	free(users_file_path);
 	
+	
 	signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 	raise(SIGINT);
+}
+
+/**
+ *Gestiona la connexió amb un Fremen particular
+ *
+ */
+static void *manageThread(void *arg) {
+	//TODO
+	User user = *((User *)arg);
+
 }
 
 int main(int argc, char *argv[]) {
@@ -91,7 +113,6 @@ int main(int argc, char *argv[]) {
 	
 	
 	while (true) {
-		// TODO threads
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
 		
 		/**
@@ -109,12 +130,16 @@ int main(int argc, char *argv[]) {
 		char *cmd, *msg;
 		char **matches = NULL, **cmd_match;
 		int user_id = -1;
+		int resultat_thread;
+		User user = NULL;
 		while (matches == NULL || *matches[0] != 'l') {
 			readUntil(clientFD, &cmd, '\n');
 			if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
 				switch(*matches[0]) {
 					case 'l':
 						regExSearch(&login_regex, matches[1], &cmd_match);
+						strcpy(user.name, cmd_match[0]);
+						itoa(cmd_match[1], user.postal, 10);
 						user_id = newLogin(cmd_match[0], cmd_match[1]);
 						
 						write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
@@ -128,7 +153,15 @@ int main(int argc, char *argv[]) {
 						
 						write(clientFD, LOGIN_OK, STATIC_STRING_LEN(LOGIN_OK)); // login efectuat correctament
 						write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
-						
+
+						// Creació del thread
+						threads = (pthread_t *)realloc(threads, sizeof(pthread_t)*(++num_threads));
+						resultat_thread = pthread_create(threads[&num_threads-1], NULL, manageThread, &user);
+						if (resultat_thread != 0) {
+							write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
+						}
+
+
 						break;
 					case 's':
 						break;
