@@ -6,6 +6,7 @@
 #include <arpa/inet.h>	// inet_pton/htons
 #include <sys/socket.h>	// socket/connect
 #include "ConfigReader.h"
+#include "Users.h"
 
 #define ERROR_ARGS				"IP y puerto de servidor no especificado\n"
 #define ERROR_SOCKET			"Error creando el socket\n"

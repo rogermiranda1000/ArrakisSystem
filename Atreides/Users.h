@@ -1,24 +1,25 @@
 /**
  * Gestiona els usuaris del sistema
  * @author Carles Roch
+ * @author Roger Miranda
  */
 
  #pragma once
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdbool.h>
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-#define USERS_FILE registeredUsers.txt
+#define USERS_FILE "registeredUsers.txt"
 
 typedef struct{
     int id;
-    String login;
+    char *login;
 }User;
 
 /**

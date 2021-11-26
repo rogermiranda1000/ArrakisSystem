@@ -79,10 +79,10 @@ int readInteger(int fd, char *stop) {
 
 int newLogin(char* login) {
     int userId;
-    int file = open(USERS_FILE, O_RDRW);
+    int file = open(USERS_FILE, O_RDWR);
     
     if (file < 0) {
-        file = open(USERS_FILE, O_RDRW | O_CREAT);
+        file = open(USERS_FILE, O_RDWR | O_CREAT);
         if (file < 0) {
             //TODO: Missatge error aquí? o a fora?
             return -1;
@@ -93,14 +93,17 @@ int newLogin(char* login) {
 
     //Busquem l'usuari
     lseek(file, 0, SEEK_SET);
-    int users = readInteger(file, '\n');
+    int users = readInteger(file, NULL);
     char* userFound;
     bool found = false;
-    while (int i = 0; i < users && !found; i++) {
+	int i;
+    for (i = 0; i < users && !found; i++) {
         if (readUntil(file, &userFound,'\n') == 0) {
+			free(userFound);
             //TODO: Error aquí?
             return -1;
         }
+		free(userFound);
         if (strcmp(userFound, login) == 0) {
             found = true;
         }
