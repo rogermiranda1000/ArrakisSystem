@@ -33,6 +33,9 @@ void ctrlCHandler() {
 	
 	free(ip);
 	free(users_file_path);
+	
+	signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
+	raise(SIGINT);
 }
 
 int main(int argc, char *argv[]) {
