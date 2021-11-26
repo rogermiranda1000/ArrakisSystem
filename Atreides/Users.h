@@ -12,6 +12,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include "ConfigReader.h" // readUntil/readInteger
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 

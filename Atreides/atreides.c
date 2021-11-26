@@ -1,6 +1,15 @@
 #include "atreides.h"
 
+#define DESCRIPTOR_SCREEN 1
+#define DESCRIPTOR_ERROR 2
+#define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
+
 char *ip = NULL, *users_file_path = NULL;
+RegEx command_regex, login_regex;
+int socketFD;
+// TODO player FD
+
+#define REGEX_INTEGER	"[0-9]{1,9}"
 
 /**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
@@ -17,6 +26,11 @@ char *ip = NULL, *users_file_path = NULL;
 })
 
 void ctrlCHandler() {
+	saveUsersFile(users_file_path);
+	
+	regExDestroy(&command_regex);
+	regExDestroy(&login_regex);
+	
 	free(ip);
 	free(users_file_path);
 }
@@ -27,18 +41,18 @@ int main(int argc, char *argv[]) {
 	
 	signal(SIGINT, ctrlCHandler);
 	
+	write(DESCRIPTOR_SCREEN, INFO_START, STATIC_STRING_LEN(INFO_START));
 	if (argc != 2) {
-		// TODO
+		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
 		exit(EXIT_FAILURE);
 	}
-	
 	
 	char *directory;
 	if (readConfig(argv[1], &ip, &port, &directory) != -1) {
-		// TODO
+		write(DESCRIPTOR_ERROR, ERROR_CONFIG_FILE, STATIC_STRING_LEN(ERROR_CONFIG_FILE));
 		exit(EXIT_FAILURE);
 	}
-	concat(&users_file_path, "%s/%s", directory, USERS_FILE)
+	concat(&users_file_path, ".%s/%s", directory, USERS_FILE);
 	free(directory);
 	
 	loadUsersFile(users_file_path);
@@ -65,53 +79,70 @@ int main(int argc, char *argv[]) {
 		write(DESCRIPTOR_ERROR, ERROR_LISTEN, STATIC_STRING_LEN(ERROR_LISTEN));
 		exit(EXIT_FAILURE);
 	}
-	write(DESCRIPTOR_SCREEN, MSG_SERVER_INIT, STATIC_STRING_LEN(MSG_SERVER_INIT));
+	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 
+	command_regex = regExInit("^(.)|(.*)$", false);
+	login_regex = regExInit("^(.)|(" REGEX_INTEGER ")$", false);
+	
+	
 	while (true) {
-		write(DESCRIPTOR_SCREEN, MSG_WAITING_USER, STATIC_STRING_LEN(MSG_WAITING_USER));
-		clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
-
-		readUntil(clientFD, name, '\n');
-		write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%s ha iniciado Sesión.\n", name));
-		sprintf(buffer, "%s/%s.txt", DIRECTORY, name);
+		// TODO threads
+		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
 		
-		clientFile = open(buffer, O_RDWR | O_CREAT, 00666);
-		items = readItemsFromFile(clientFile);
+		/**
+		 * -- Fremen -> Atreides --
+		 * l|<nom>|<codi>\n -> login <nom> <codi>
+		 * s|<codi>\n -> search <codi>
+		 * [x] n|<file>\n -> send <file>
+		 * [x] p|<id>\n -> photo <id>
+		 * e|\n -> logout
+		 *
+		 * -- Atreides -> Fremen --
+		 * l|\n -> login efectuat correctament
+		 **/
 
-		session_interrupted = false;
-		write(DESCRIPTOR_SCREEN, MSG_SENDING_LIST, STATIC_STRING_LEN(MSG_SENDING_LIST));
-		sendItems(clientFD, items);
-		write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "Lista enviada a %s.\n\n", name));
-		while (!session_interrupted) {
-			// envia Producto#N\n o OUT\n
-			readUntil(clientFD, buffer, '#');
-			if (strcmp(buffer, "OUT\n") == 0) break;
-			Item *i = getItemFromList(&items, buffer);
-			readUntil(clientFD, buffer, '\n');
-			value = secureAtoi(buffer);
-			
-			write(DESCRIPTOR_SCREEN, MSG_RECIEVED_MOD, STATIC_STRING_LEN(MSG_RECIEVED_MOD));
-			if (value == RESET) write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "\tEliminar %s\n", i->name));
-			else write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "\t%dx %s\n", value, i->name));
+		char *cmd, *msg;
+		char **matches = NULL, **cmd_match;
+		int user_id = -1;
+		while (matches == NULL || *matches[0] != 'l') {
+			readUntil(clientFD, &cmd, '\n');
+			if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
+				switch(*matches[0]) {
+					case 'l':
+						regExSearch(&login_regex, matches[1], &cmd_match);
+						user_id = newLogin(cmd_match[0], cmd_match[1]);
+						
+						write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
+						write(DESCRIPTOR_SCREEN, cmd_match[0], strlen(cmd_match[0]));
+						write(DESCRIPTOR_SCREEN, " ", sizeof(char));
+						write(DESCRIPTOR_SCREEN, cmd_match[1], strlen(cmd_match[1]));
+						write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 
-			if (operateItem(i, value)) {
-				write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "Lista de %s actualizada.\n", name));
-				write(DESCRIPTOR_SCREEN, MSG_SENDING_LIST, STATIC_STRING_LEN(MSG_SENDING_LIST));
-				sendItems(clientFD, items);
-				write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "Lista enviada a %s.\n\n", name));
-			} else {
-				write(clientFD, "KO\n", 3*sizeof(char));
-				write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "No se ha podido actualizar la lista de %s.\n", name));
+						write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
+						free(msg);
+						
+						write(clientFD, LOGIN_OK, STATIC_STRING_LEN(LOGIN_OK)); // login efectuat correctament
+						write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+						
+						break;
+					case 's':
+						break;
+					case 'n':
+						// TODO
+						break;
+					case 'p':
+						// TODO
+						break;
+					case 'e':
+						write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
+						break;
+				}
 			}
+			free(cmd);
 		}
+		regExSearchFree(&command_regex, &matches);
 
 		// Tancar conexió
-		write(DESCRIPTOR_SCREEN, buffer, sprintf(buffer, "%s ha cerrado la sesión.\n", name));
-		saveItemsInFile(clientFile, items);
-		close(clientFile);
-		clientFile = 0;
-
-		freeItems(&items);
 		close(clientFD);
 		clientFD = 0;
 	}
