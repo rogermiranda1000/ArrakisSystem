@@ -4,15 +4,13 @@
 #define DESCRIPTOR_ERROR 2
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-typedef struct {
-	User user;
-	int fd;
-} ThreadData;
-
 char *ip = NULL, *users_file_path = NULL;
 RegEx command_regex, login_regex;
-int socketFD, num_threads = 0;
+int socketFD;
+
+int num_threads = 0;
 pthread_t *threads = NULL;
+
 // TODO player FD
 
 #define REGEX_INTEGER	"[0-9]{1,9}"
@@ -33,14 +31,16 @@ pthread_t *threads = NULL;
 
 void ctrlCHandler() {
 	int result;
-	void *r;
-	for (;num_threads > 0; num_threads--) {
-		result = pthread_join(threads[num_threads-1], &r);
+	// TODO com indicar que està en procés d'aturada?
+	while(num_threads > 0) {
+		result = pthread_join(threads[num_threads-1], NULL);
 		if (result != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_JOIN, STATIC_STRING_LEN(ERROR_JOIN));
 		}
+		num_threads--;
 	}
 	free(threads);
+	
 	saveUsersFile(users_file_path);
 	
 	regExDestroy(&command_regex);
@@ -55,42 +55,76 @@ void ctrlCHandler() {
 }
 
 /**
- *Gestiona la connexió amb un Fremen particular
- *
+ * Gestiona la connexió amb un Fremen particular
+ * @param arg	
  */
 static void *manageThread(void *arg) {
+	/**
+	 * -- Fremen -> Atreides --
+	 * l|<nom>|<codi>\n -> login <nom> <codi>
+	 * s|<codi>\n -> search <codi>
+	 * [x] n|<file>\n -> send <file>
+	 * [x] p|<id>\n -> photo <id>
+	 * e|\n -> logout
+	 *
+	 * -- Atreides -> Fremen --
+	 * l|\n -> login efectuat correctament
+	 **/
+	
+	int clientFD = *((int*)arg);
 	char *msg, *cmd;
-	char **matches = NULL;
-	ThreadData data = *((ThreadData *)arg);
-	User user = data.user;
-	int clientFD = data.fd;
-	write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Rebut usuari %s.\n", user.login));
-	free(msg);
+	char **matches = NULL, **cmd_match;
+	
+	int user_id = -1;
 
-	while (matches == NULL || *matches[0] != 'l') {
+	while (matches == NULL || *matches[0] != 'e') {
 		readUntil(clientFD, &cmd, '\n');
 		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
 			switch(*matches[0]) {
+				case 'l':
+					regExSearch(&login_regex, matches[1], &cmd_match);
+					user_id = newLogin(cmd_match[0], cmd_match[1]);
+					
+					write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
+					write(DESCRIPTOR_SCREEN, cmd_match[0], strlen(cmd_match[0]));
+					write(DESCRIPTOR_SCREEN, " ", sizeof(char));
+					write(DESCRIPTOR_SCREEN, cmd_match[1], strlen(cmd_match[1]));
+					write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+
+					write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
+					free(msg);
+					
+					write(clientFD, LOGIN_OK, STATIC_STRING_LEN(LOGIN_OK)); // login efectuat correctament
+					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+					
+					regExSearchFree(&login_regex, &cmd_match);
+					break;
+					
 				case 's':
+					if (user_id == -1) break;
 					break;
 				case 'n':
+					if (user_id == -1) break;
 					// TODO
 					break;
 				case 'p':
+					if (user_id == -1) break;
 					// TODO
 					break;
 				case 'e':
+					if (user_id == -1) {
+						*matches[0] = '*'; // marquem com invàl·lid per evitar que surti
+						break;
+					}
 					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
-					break;
-				default:
-					//TODO
+					user_id = -1;
+					// TODO
 					break;
 			}
 		}
+		regExSearchFree(&command_regex, &matches);
 		free(cmd);
 	}
-	regExSearchFree(&command_regex, &matches);
-	//TODO: Comprobar que no estigui descnectat?
 
 	// Tancar conexió
 	close(clientFD);
@@ -153,73 +187,12 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
 		
-		/**
-		 * -- Fremen -> Atreides --
-		 * l|<nom>|<codi>\n -> login <nom> <codi>
-		 * s|<codi>\n -> search <codi>
-		 * [x] n|<file>\n -> send <file>
-		 * [x] p|<id>\n -> photo <id>
-		 * e|\n -> logout
-		 *
-		 * -- Atreides -> Fremen --
-		 * l|\n -> login efectuat correctament
-		 **/
-
-		char *cmd, *msg;
-		char **matches = NULL, **cmd_match;
-		int user_id = -1;
-		int resultat_thread;
-		User user = {0};
-		while (matches == NULL || *matches[0] != 'l') {
-			readUntil(clientFD, &cmd, '\n');
-			if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
-				switch(*matches[0]) {
-					case 'l':
-						regExSearch(&login_regex, matches[1], &cmd_match);
-						strcpy(user.login, cmd_match[0]);
-						user.postal = atoi(cmd_match[1]);
-						user_id = newLogin(cmd_match[0], cmd_match[1]);
-						
-						write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
-						write(DESCRIPTOR_SCREEN, cmd_match[0], strlen(cmd_match[0]));
-						write(DESCRIPTOR_SCREEN, " ", sizeof(char));
-						write(DESCRIPTOR_SCREEN, cmd_match[1], strlen(cmd_match[1]));
-						write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
-
-						write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
-						free(msg);
-						
-						write(clientFD, LOGIN_OK, STATIC_STRING_LEN(LOGIN_OK)); // login efectuat correctament
-						write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
-
-						// Creació del thread
-						threads = (pthread_t *)realloc(threads, sizeof(pthread_t)*(++num_threads));
-						resultat_thread = pthread_create(&threads[num_threads-1], NULL, manageThread, &user);
-						if (resultat_thread != 0) {
-							write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
-						}
-
-						break;
-					case 's':
-						break;
-					case 'n':
-						// TODO
-						break;
-					case 'p':
-						// TODO
-						break;
-					case 'e':
-						write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
-						break;
-				}
-			}
-			free(cmd);
+		// Creació del thread
+		// TODO protegir
+		threads = (pthread_t *)realloc(threads, sizeof(pthread_t)*(++num_threads));
+		if (pthread_create(&threads[num_threads-1], NULL, manageThread, &clientFD) /* TODO la variable 'clientFD' es destruirà abans de ser llegida? */ != 0) {
+			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
-		regExSearchFree(&command_regex, &matches);
-
-		// Tancar conexió
-		close(clientFD);
-		clientFD = 0;
 	}
 
 	return 0;

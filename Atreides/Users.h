@@ -50,3 +50,11 @@ int saveUsersFile(char *path);
  * 					-2 si error de lectura de fitxer)
  */
 int newLogin(char *login, char *postal);
+
+/**
+ * Obtè un usuari a partir de la seva ID
+ * @param id	ID del usuari
+ *				/!\ Ha de ser menor a usuaris.len /!\
+ * @return		Usuari guardat amb aquella ID
+ */
+User getUser(int id);
