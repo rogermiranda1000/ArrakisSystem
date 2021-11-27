@@ -188,8 +188,8 @@ int main(int argc, char *argv[]) {
 	}
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 
-	command_regex = regExInit("^(.)\\|(.*)$", false);
-	login_regex = regExInit("^(.)\\|(" REGEX_INTEGER ")$", false);
+	command_regex = regExInit("^(\\S)\\|(\\S*)$", false);
+	login_regex = regExInit("^(\\S+)\\|(" REGEX_INTEGER ")$", false);
 	
 	
 	while (true) {
