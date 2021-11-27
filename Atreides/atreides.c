@@ -4,6 +4,11 @@
 #define DESCRIPTOR_ERROR 2
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
+typedef struct {
+	User user;
+	int fd;
+} ThreadData;
+
 char *ip = NULL, *users_file_path = NULL;
 RegEx command_regex, login_regex;
 int socketFD, num_threads = 0;
@@ -54,11 +59,42 @@ void ctrlCHandler() {
  *
  */
 static void *manageThread(void *arg) {
-	//TODO
-	char *msg;
-	User user = *((User *)arg);
+	char *msg, *cmd;
+	char **matches = NULL;
+	ThreadData data = *((ThreadData *)arg);
+	User user = data.user;
+	int clientFD = data.fd;
 	write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Rebut usuari %s.\n", user.login));
 	free(msg);
+
+	while (matches == NULL || *matches[0] != 'l') {
+		readUntil(clientFD, &cmd, '\n');
+		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
+			switch(*matches[0]) {
+				case 's':
+					break;
+				case 'n':
+					// TODO
+					break;
+				case 'p':
+					// TODO
+					break;
+				case 'e':
+					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
+					break;
+				default:
+					//TODO
+					break;
+			}
+		}
+		free(cmd);
+	}
+	regExSearchFree(&command_regex, &matches);
+	//TODO: Comprobar que no estigui descnectat?
+
+	// Tancar conexió
+	close(clientFD);
+	clientFD = 0;
 	return NULL;
 }
 
@@ -162,7 +198,6 @@ int main(int argc, char *argv[]) {
 						if (resultat_thread != 0) {
 							write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 						}
-
 
 						break;
 					case 's':
