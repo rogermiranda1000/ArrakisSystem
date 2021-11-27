@@ -20,6 +20,18 @@ int clientFD = -1;
 	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
 })
 
+/**
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
+ * @param fd		FileDescriptor on imprimir la string
+ * @param format	Format (com a sprintf)
+ * @param ...		Paràmetres del format (com a sprintf)
+ */
+#define susPrintF(fd, format, ...) ({							\
+	char *buffer;												\
+	write(fd, buffer, concat(&buffer, format, __VA_ARGS__));	\
+	free(buffer);												\
+})
+
 void ctrlCHandler() {
 	if (current_status == WAITING) {
 		terminate();
@@ -107,8 +119,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				free(read);
 				
 				clientFD = readInteger(clientFD, NULL);
-				write(DESCRIPTOR_SCREEN, read, concat(&read, "Benvingut %s. Tens ID %d.\n", output[0], clientFD));
-				free(read);
+				susPrintF(DESCRIPTOR_SCREEN, "Benvingut %s. Tens ID %d.\n", output[0], clientFD);
 				
 				write(DESCRIPTOR_SCREEN, MSG_CONNECTED, STATIC_STRING_LEN(MSG_CONNECTED));
 				
@@ -116,6 +127,12 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEARCH:
+				if (clientFD < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(SEARCH, &output);
+					break;
+				}
+				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // code
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 				
@@ -123,6 +140,12 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case PHOTO:
+				if (clientFD < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(PHOTO, &output);
+					break;
+				}
+				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 				
@@ -130,6 +153,12 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEND:
+				if (clientFD < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(SEND, &output);
+					break;
+				}
+				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // file
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 				
@@ -138,7 +167,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 			case LOGOUT:
 				current_status = EXIT;
-				clientFD = -1;
+				// el socket es tanca a terminate()
 				
 				// logout no té arguments -> no cal free
 				break;
@@ -160,6 +189,11 @@ int main(int argc, char *argv[], char *envp[]) {
 
 void terminate() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
+	
+	if (clientFD >= 0) {
+		write(clientFD, "e|\n", 3*sizeof(char));
+		close(clientFD);
+	}
 	
 	freeCommands();
 	

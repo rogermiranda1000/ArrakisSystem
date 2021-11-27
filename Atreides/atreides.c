@@ -29,6 +29,18 @@ pthread_t *threads = NULL;
 	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
 })
 
+/**
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
+ * @param fd		FileDescriptor on imprimir la string
+ * @param format	Format (com a sprintf)
+ * @param ...		Paràmetres del format (com a sprintf)
+ */
+#define susPrintF(fd, format, ...) ({							\
+	char *buffer;												\
+	write(fd, buffer, concat(&buffer, format, __VA_ARGS__));	\
+	free(buffer);												\
+})
+
 void ctrlCHandler() {
 	int result;
 	// TODO com indicar que està en procés d'aturada?
@@ -73,7 +85,7 @@ static void *manageThread(void *arg) {
 	 **/
 	
 	int clientFD = *((int*)arg);
-	char *msg, *cmd;
+	char *cmd;
 	char **matches = NULL, **cmd_match;
 	
 	int user_id = -1;
@@ -86,18 +98,10 @@ static void *manageThread(void *arg) {
 					regExSearch(&login_regex, matches[1], &cmd_match);
 					user_id = newLogin(cmd_match[0], cmd_match[1]);
 					
-					write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
-					write(DESCRIPTOR_SCREEN, cmd_match[0], strlen(cmd_match[0]));
-					write(DESCRIPTOR_SCREEN, " ", sizeof(char));
-					write(DESCRIPTOR_SCREEN, cmd_match[1], strlen(cmd_match[1]));
-					write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
-
-					write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
-					free(msg);
+					susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
 					
 					// envia l'ID a Fremen
-					write(clientFD, msg, concat(&msg, "l|%d\n", user_id)); // login efectuat correctament
-					free(msg);
+					susPrintF(clientFD, "l|%d\n", user_id); // login efectuat correctament
 					
 					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
 					
@@ -120,9 +124,9 @@ static void *manageThread(void *arg) {
 						*matches[0] = '*'; // marquem com invàl·lid per evitar que surti
 						break;
 					}
+					susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
 					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
 					user_id = -1;
-					// TODO
 					break;
 			}
 		}
