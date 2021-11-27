@@ -8,9 +8,6 @@ char *ip = NULL, *users_file_path = NULL;
 RegEx command_regex, login_regex;
 int socketFD;
 
-int num_threads = 0;
-pthread_t *threads = NULL;
-
 // TODO player FD
 
 #define REGEX_INTEGER	"[0-9]{1,9}"
@@ -42,16 +39,7 @@ pthread_t *threads = NULL;
 })
 
 void ctrlCHandler() {
-	int result;
-	// TODO com indicar que està en procés d'aturada?
-	while(num_threads > 0) {
-		result = pthread_join(threads[num_threads-1], NULL);
-		if (result != 0) {
-			write(DESCRIPTOR_ERROR, ERROR_JOIN, STATIC_STRING_LEN(ERROR_JOIN));
-		}
-		num_threads--;
-	}
-	free(threads);
+	terminateThreads();
 	close(socketFD);
 	
 	saveUsersFile(users_file_path);
@@ -85,6 +73,8 @@ static void *manageThread(void *arg) {
 	 **/
 	
 	int clientFD = *((int*)arg);
+	free(arg);
+	
 	char *cmd;
 	char **matches, **cmd_match;
 	bool exit = false;
@@ -195,9 +185,7 @@ int main(int argc, char *argv[]) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
 		
 		// Creació del thread
-		// TODO protegir
-		threads = (pthread_t *)realloc(threads, sizeof(pthread_t)*(++num_threads));
-		if (pthread_create(&threads[num_threads-1], NULL, manageThread, &clientFD) /* TODO la variable 'clientFD' es destruirà abans de ser llegida? */ != 0) {
+		if (createThread(&manageThread, &clientFD, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
 	}

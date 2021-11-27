@@ -2,7 +2,6 @@
 
 #include <unistd.h>
 #include <stdbool.h> 	// bool/true/false
-#include <pthread.h>	// pthread_create/pthread_join/pthread_t
 #include <arpa/inet.h>	// inet_pton/htons
 #include <sys/socket.h>	// socket/connect
 #include <signal.h>
@@ -12,6 +11,7 @@
 #include "ConfigReader.h"
 #include "Users.h"
 #include "RegExSearcher.h"
+#include "Threads.h"
 
 #define SOCKET_QUEUE 10
 
