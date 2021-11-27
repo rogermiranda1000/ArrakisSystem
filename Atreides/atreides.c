@@ -69,7 +69,7 @@ static void *manageThread(void *arg) {
 	 * e|\n -> logout
 	 *
 	 * -- Atreides -> Fremen --
-	 * l|\n -> login efectuat correctament
+	 * l|<id>\n -> login efectuat correctament
 	 **/
 	
 	int clientFD = *((int*)arg);

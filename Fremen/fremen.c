@@ -4,6 +4,21 @@ volatile Status current_status = RUNNING;
 
 char *ip, *directory;
 char *input = NULL;
+int clientFD = -1;
+
+/**
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
+ * /!\ Cal fer el free del buffer /!\
+ * @param buffer	On es guardarà el resultat (char**)
+ * @param format	Format (com a sprintf)
+ * @param ...		Paràmetres del format (com a sprintf)
+ * @return			String resultant
+ */
+#define concat(buffer, format, ...) ({													\
+	size_t size = snprintf(NULL, 0, format, __VA_ARGS__); /* obtè la mida resultant */	\
+	*buffer = (char*)malloc(size+1);													\
+	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
+})
 
 void ctrlCHandler() {
 	if (current_status == WAITING) {
@@ -24,7 +39,6 @@ int main(int argc, char *argv[], char *envp[]) {
 	unsigned short port;
 
 	signal(SIGINT, ctrlCHandler); // reprograma Control+C
-	signal(SIGPWR, freeEverything); // per si marcha la llum
 	
 	if (argc < 2) {
 		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -36,6 +50,9 @@ int main(int argc, char *argv[], char *envp[]) {
 		exit(EXIT_FAILURE);
 	}
 	
+	write(DESCRIPTOR_SCREEN, MSG_INIT, STATIC_STRING_LEN(MSG_INIT));
+	
+	char *read;
 	char **output;
 	initCommands();
 	
@@ -44,15 +61,56 @@ int main(int argc, char *argv[], char *envp[]) {
 		input = NULL;
 		
 		current_status = WAITING;
-		input = readUntil(0, '\n');
+		readUntil(0, &input, '\n');
 		current_status = RUNNING;
 		
 		switch(searchCommand(input, &output)) {
+			/**
+			 * -- Fremen -> Atreides --
+			 * l|<nom>|<codi>\n -> login <nom> <codi>
+			 * s|<codi>\n -> search <codi>
+			 * [x] n|<file>\n -> send <file>
+			 * [x] p|<id>\n -> photo <id>
+			 * e|\n -> logout
+			 *
+			 * -- Atreides -> Fremen --
+			 * l|<id>\n -> login efectuat correctament
+			 **/
+			
 			case LOGIN:
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // login
-				write(DESCRIPTOR_SCREEN, " ", sizeof(char));
-				write(DESCRIPTOR_SCREEN, output[1], strlen(output[1])); // code
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+				if (clientFD >= 0) {
+					freeCommand(LOGIN, &output);
+					write(DESCRIPTOR_ERROR, ERROR_ALREADY_LOGGED, STATIC_STRING_LEN(ERROR_ALREADY_LOGGED));
+					break;
+				}
+				
+				clientFD = socketConnect(ip, port);
+				if (clientFD < 0) {
+					freeCommand(LOGIN, &output);
+					write(DESCRIPTOR_ERROR, ERROR_SOCKET, STATIC_STRING_LEN(ERROR_SOCKET));
+					break;
+				}
+				
+				write(clientFD, "l|", 2*sizeof(char));
+				write(clientFD, output[0], strlen(output[0])); // login
+				write(clientFD, "|", sizeof(char));
+				write(clientFD, output[1], strlen(output[1])); // code
+				write(clientFD, "\n", sizeof(char));
+				
+				readUntil(clientFD, &read, '|');
+				if (*read != 'l') {
+					freeCommand(LOGIN, &output);
+					write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
+					free(read);
+					break;
+				}
+				free(read);
+				
+				clientFD = readInteger(clientFD, NULL);
+				write(DESCRIPTOR_SCREEN, read, concat(&read, "Benvingut %s. Tens ID %d.\n", output[0], clientFD));
+				free(read);
+				
+				write(DESCRIPTOR_SCREEN, MSG_CONNECTED, STATIC_STRING_LEN(MSG_CONNECTED));
 				
 				freeCommand(LOGIN, &output);
 				break;
@@ -80,6 +138,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 			case LOGOUT:
 				current_status = EXIT;
+				clientFD = -1;
 				
 				// logout no té arguments -> no cal free
 				break;
@@ -100,11 +159,8 @@ int main(int argc, char *argv[], char *envp[]) {
 }
 
 void terminate() {
-	write(DESCRIPTOR_SCREEN, LOGOUT_MSG, STATIC_STRING_LEN(LOGOUT_MSG));
-	freeEverything();
-}
-
-void freeEverything() {
+	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
+	
 	freeCommands();
 	
 	free(input);

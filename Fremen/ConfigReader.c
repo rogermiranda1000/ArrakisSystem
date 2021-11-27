@@ -1,32 +1,60 @@
 #include "ConfigReader.h"
 
-int readInteger(int fd, char delimiter) {
+/**
+ * Llegeix del FileDescriptor fins trobar el delimitador i decideix si continuar o no
+ * Útil per utilitzar junt amb '\n' com a stop_delimiter
+ * /!\ El delimitador no es guarda al buffer, però sí s'elimina del FileDescriptor /!\
+ * /!\ Cal fer el free del buffer /!\
+ * @param fd					FileDescriptor on agafar les dades
+ * @param buffer				Array on guardar la informació (amb '\0')
+ * @param size					Caracters obtninguts (sense contar '\0'; NULL si no es vol guardar)
+ * @param continue_delimiter	Caracter que marca quan parar la lectura
+ * @param stop_delimiter		Caracter que marca quan parar la lectura
+ * @retval true					S'ha detingut a continue_delimiter
+ * @retval false				S'ha detingut a stop_delimiter
+ */
+bool readUntilAndContinue(int fd, char **buffer, size_t *size, char continue_delimiter, char stop_delimiter) {
+	char aux;
+	size_t s = 0;
+	*buffer = NULL;
+	
+	while(read(fd, &aux, sizeof(char)) == sizeof(char) && aux != continue_delimiter && aux != stop_delimiter) {
+		*buffer = (char*)realloc(*buffer, (s+1)*sizeof(char));
+		(*buffer)[s++] = aux;
+	}
+	*buffer = (char*)realloc(*buffer, (s+1)*sizeof(char));
+	(*buffer)[s] = '\0';
+	
+	if (size != NULL) *size = s;
+	
+	return (aux == continue_delimiter);
+}
+
+size_t readUntil(int fd, char **buffer, char delimiter) {
+	size_t size;
+	
+	readUntilAndContinue(fd, buffer, &size, delimiter, delimiter);
+	
+	return size;
+}
+
+int readInteger(int fd, char *stop) {
 	char aux;
 	int r = 0;
+	bool negative = false;
 	
-	while(read(fd, &aux, sizeof(char)) == sizeof(char) && aux != delimiter) {
+	if (read(fd, &aux, sizeof(char)) != sizeof(char)) return r;
+	if (aux == '-') negative = true;
+	else r = aux - '0';
+	
+	while(read(fd, &aux, sizeof(char)) == sizeof(char) && aux >= '0' && aux <= '9') {
 		r *= 10;
 		r += aux - '0';
 	}
 	
-	return r;
-}
-
-char *readUntil(int fd, char delimiter) {
-	char aux;
-	size_t size = 0;
-	char *r = NULL;
+	if (stop != NULL) *stop = aux; // guarda el caracter on s'ha detingut la conversió
 	
-	while (read(fd, &aux, sizeof(char)) == sizeof(char) && aux != delimiter) {
-		r = (char*)realloc(r, sizeof(char)*(++size));
-		r[size-1] = aux;
-	}
-	
-	// '\0'
-	r = (char*)realloc(r, sizeof(char)*(++size));
-	r[size-1] = '\0';
-	
-	return r;
+	return negative ? -r : r;
 }
 
 int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* port, char** directory) {
@@ -34,10 +62,10 @@ int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* p
 	if (file < 0) {
 		return -1;
 	}
-	*timeClean = readInteger(file, '\n');
-	*ip = readUntil(file, '\n');
-	*port = readInteger(file, '\n');
-	*directory = readUntil(file, '\n');
+	*timeClean = readInteger(file, NULL);
+	readUntil(file, ip, '\n');
+	*port = readInteger(file, NULL);
+	readUntil(file, directory, '\n');
 	close(file);
 	return 0;
 }
