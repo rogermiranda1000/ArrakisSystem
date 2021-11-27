@@ -1,9 +1,18 @@
 CC = gcc
 # -std=gnu1 és necesari per WCONTINUED [https://stackoverflow.com/a/60436595/9178470]
-CFLAGS = -Wall -Wextra -g -std=gnu11
+CFLAGS = -Wall -Wextra -g -std=gnu11 -lpthread
 
-fremen: atreides.c atreides.h
-	$(CC) atreides.c Atreides $(CFLAGS)
+atreides: atreides.c atreides.h Users.o ConfigReader.o RegExSearcher.o
+	$(CC) atreides.c Users.o ConfigReader.o RegExSearcher.o -o Atreides $(CFLAGS)
+
+users: Users.c Users.h
+	$(CC) Users.c -o Users.o $(CFLAGS)
+
+config: ConfigReader.c ConfigReader.h
+	$(CC) ConfigReader.c -o ConfigReader.o $(CFLAGS)
+
+regex: RegExSearcher.c RegExSearcher.h
+	$(CC) RegExSearcher.c -o RegExSearcher.o $(CFLAGS)
 
 clean:
-	rm -f fremen.exe *.o
+	rm -f Atreides *.o
