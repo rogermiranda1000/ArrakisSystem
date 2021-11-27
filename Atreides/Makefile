@@ -1,6 +1,6 @@
 CC = gcc
 # -std=gnu1 és necesari per WCONTINUED [https://stackoverflow.com/a/60436595/9178470]
-CFLAGS = -Wall -Wextra -g -std=gnu11
+CFLAGS = -Wall -Wextra -g -std=gnu11 -lpthread
 
 atreides: atreides.c atreides.h Users.o ConfigReader.o RegExSearcher.o
 	$(CC) atreides.c Users.o ConfigReader.o RegExSearcher.o -o Atreides $(CFLAGS)

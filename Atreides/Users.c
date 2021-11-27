@@ -116,3 +116,7 @@ int newLogin(char *login, char *postal) {
 	usuaris.users[r].postal = atoi(postal); // per si de cas ha cambiat de regió
     return r;
 }
+
+User getUser(int id) {
+	return usuaris.users[id];
+}
