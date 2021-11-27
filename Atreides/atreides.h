@@ -32,6 +32,4 @@
 
 #define USERS_FILE				"registeredUsers.txt"
 
-#define LOGIN_OK				"l|" // login efectuat correctament
-
 int main(int argc, char *argv[]);
