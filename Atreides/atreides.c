@@ -40,6 +40,7 @@ void ctrlCHandler() {
 		num_threads--;
 	}
 	free(threads);
+	close(socketFD);
 	
 	saveUsersFile(users_file_path);
 	
@@ -94,7 +95,10 @@ static void *manageThread(void *arg) {
 					write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
 					free(msg);
 					
-					write(clientFD, LOGIN_OK, STATIC_STRING_LEN(LOGIN_OK)); // login efectuat correctament
+					// envia l'ID a Fremen
+					write(clientFD, msg, concat(&msg, "l|%d\n", user_id)); // login efectuat correctament
+					free(msg);
+					
 					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
 					
 					regExSearchFree(&login_regex, &cmd_match);
@@ -180,8 +184,8 @@ int main(int argc, char *argv[]) {
 	}
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 
-	command_regex = regExInit("^(.)|(.*)$", false);
-	login_regex = regExInit("^(.)|(" REGEX_INTEGER ")$", false);
+	command_regex = regExInit("^(.)\\|(.*)$", false);
+	login_regex = regExInit("^(.)\\|(" REGEX_INTEGER ")$", false);
 	
 	
 	while (true) {
