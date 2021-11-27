@@ -86,11 +86,12 @@ static void *manageThread(void *arg) {
 	
 	int clientFD = *((int*)arg);
 	char *cmd;
-	char **matches = NULL, **cmd_match;
+	char **matches, **cmd_match;
+	bool exit = false;
 	
 	int user_id = -1;
 
-	while (matches == NULL || *matches[0] != 'e') {
+	while (!exit) {
 		readUntil(clientFD, &cmd, '\n');
 		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
 			switch(*matches[0]) {
@@ -120,13 +121,11 @@ static void *manageThread(void *arg) {
 					// TODO
 					break;
 				case 'e':
-					if (user_id == -1) {
-						*matches[0] = '*'; // marquem com invàl·lid per evitar que surti
-						break;
-					}
+					if (user_id == -1) break;
 					susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
 					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
-					user_id = -1;
+					user_id = -1; // no cal, pero per si de cas
+					exit = true;
 					break;
 			}
 		}
