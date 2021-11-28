@@ -3,7 +3,7 @@
 RegEx login_regex, logout_regex, search_regex, photo_regex, send_regex;
 
 void initCommands() {
-	login_regex = regExInit("^LOGIN\\s+(\\S+)\\s+(" REGEX_INTEGER ")$", true);
+	login_regex = regExInit("^LOGIN\\s+(\\S{1,230})\\s+(" REGEX_INTEGER ")$", true); // 230 son els màxims caracters com a usuari que el protocol establert pot suportar
 	logout_regex = regExInit("^LOGOUT$", true);
 	search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true);
 	photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true);

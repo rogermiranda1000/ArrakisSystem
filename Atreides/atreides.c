@@ -5,7 +5,6 @@
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
 char *ip = NULL, *users_file_path = NULL;
-RegEx command_regex, login_regex;
 int socketFD;
 
 // TODO player FD
@@ -43,9 +42,6 @@ void ctrlCHandler() {
 	close(socketFD);
 	
 	saveUsersFile(users_file_path);
-	
-	regExDestroy(&command_regex);
-	regExDestroy(&login_regex);
 
 	free(ip);
 	free(users_file_path);
@@ -75,52 +71,45 @@ static void *manageThread(void *arg) {
 	int clientFD = *((int*)arg);
 	free(arg);
 	
-	char *cmd;
-	char **matches, **cmd_match;
 	bool exit = false;
+	Comunication data;
+	
+	RegEx regex;
+	char **cmd_match;
 	
 	int user_id = -1;
 
 	while (!exit) {
-		readUntil(clientFD, &cmd, '\n');
-		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
-			switch(*matches[0]) {
-				case 'C':
-					regExSearch(&login_regex, matches[1], &cmd_match);
-					user_id = newLogin(cmd_match[0], cmd_match[1]);
-					
-					susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
-					
-					// envia l'ID a Fremen
-					susPrintF(clientFD, "O|%d\n", user_id); // login efectuat correctament
-					
-					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
-					
-					regExSearchFree(&login_regex, &cmd_match);
-					break;
-					
-				case 's':
-					if (user_id == -1) break;
-					break;
-				case 'n':
-					if (user_id == -1) break;
-					// TODO
-					break;
-				case 'p':
-					if (user_id == -1) break;
-					// TODO
-					break;
-				case 'Q':
-					if (user_id == -1) break;
-					susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
-					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
-					user_id = -1; // no cal, pero per si de cas
-					exit = true;
-					break;
-			}
+		switch(getMsg(clientFD, &data)) {
+			case PROTOCOL_LOGIN:
+				regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
+				regExSearch(&regex, data.data, &cmd_match);
+				
+				user_id = newLogin(cmd_match[0], cmd_match[1]);
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
+				
+				// envia l'ID a Fremen
+				sendLoginResponse(clientFD, user_id); // login efectuat correctament
+				
+				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+				
+				regExSearchFree(&regex, &cmd_match);
+				regExDestroy(&regex);
+				break;
+				
+			case PROTOCOL_LOGOUT:
+				if (user_id == -1) break;
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
+				write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
+				user_id = -1; // no cal, pero per si de cas
+				exit = true;
+				break;
+			
+			default:
+				write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL));
+				break;
 		}
-		regExSearchFree(&command_regex, &matches);
-		free(cmd);
 	}
 
 	// Tancar conexió
@@ -176,10 +165,6 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
-
-	command_regex = regExInit("^(\\S)\\|(\\S*)$", false);
-	login_regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
-	
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);

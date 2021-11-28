@@ -4,21 +4,9 @@ volatile Status current_status = RUNNING;
 
 char *ip, *directory;
 char *input = NULL;
-int clientFD = -1;
 
-/**
- * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
- * /!\ Cal fer el free del buffer /!\
- * @param buffer	On es guardarà el resultat (char**)
- * @param format	Format (com a sprintf)
- * @param ...		Paràmetres del format (com a sprintf)
- * @return			String resultant
- */
-#define concat(buffer, format, ...) ({													\
-	size_t size = snprintf(NULL, 0, format, __VA_ARGS__); /* obtè la mida resultant */	\
-	*buffer = (char*)malloc(size+1);													\
-	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
-})
+int clientFD = -1, clientID = -1;
+char *name;
 
 /**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
@@ -64,11 +52,10 @@ int main(int argc, char *argv[], char *envp[]) {
 	
 	write(DESCRIPTOR_SCREEN, MSG_INIT, STATIC_STRING_LEN(MSG_INIT));
 	
-	char *read;
 	char **output;
+	Comunication data;
 	initCommands();
 	
-	int clientID = -1;
 	while (current_status != EXIT) {
 		free(input); // allibera l'últim readUntil
 		input = NULL;
@@ -104,23 +91,25 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(clientFD, "C|", 2*sizeof(char));
-				write(clientFD, output[0], strlen(output[0])); // login
-				write(clientFD, "*", sizeof(char));
-				write(clientFD, output[1], strlen(output[1])); // code
-				write(clientFD, "\n", sizeof(char));
+				sendLogin(clientFD, output[0], output[1]);
 				
-				readUntil(clientFD, &read, '|');
-				if (*read != 'O') {
-					freeCommand(LOGIN, &output);
+				if (getMsg(clientFD, &data) != PROTOCOL_LOGIN_RESPONSE) {
 					write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
-					free(read);
+					
+					freeCommand(LOGIN, &output);
 					break;
 				}
-				free(read);
 				
-				clientID = readInteger(clientFD, NULL);
-				susPrintF(DESCRIPTOR_SCREEN, "Benvingut %s. Tens ID %d.\n", output[0], clientID);
+				if ((clientID = getLoginResponse(&data)) == -1) {
+					write(DESCRIPTOR_ERROR, ERROR_ID_ASSIGNMENT, STATIC_STRING_LEN(ERROR_ID_ASSIGNMENT));
+					
+					freeCommand(LOGIN, &output);
+					break;
+				}
+				
+				name = (char*)malloc(sizeof(char)*(strlen(output[0])+1));
+				strcpy(name, output[0]);
+				susPrintF(DESCRIPTOR_SCREEN, "Benvingut %s. Tens ID %d.\n", name, clientID);
 				
 				write(DESCRIPTOR_SCREEN, MSG_CONNECTED, STATIC_STRING_LEN(MSG_CONNECTED));
 				
@@ -192,8 +181,7 @@ void terminate() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
 	
 	if (clientFD >= 0) {
-		write(clientFD, "Q|\n", 3*sizeof(char));
-		close(clientFD);
+		sendLogout(clientFD, name, clientID);
 	}
 	
 	freeCommands();
@@ -201,4 +189,5 @@ void terminate() {
 	free(input);
 	free(ip);
 	free(directory);
+	free(name);
 }
