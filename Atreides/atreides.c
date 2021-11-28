@@ -5,11 +5,7 @@
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
 char *ip = NULL, *users_file_path = NULL;
-RegEx command_regex, login_regex;
 int socketFD;
-
-int num_threads = 0;
-pthread_t *threads = NULL;
 
 // TODO player FD
 
@@ -29,23 +25,23 @@ pthread_t *threads = NULL;
 	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
 })
 
+/**
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
+ * @param fd		FileDescriptor on imprimir la string
+ * @param format	Format (com a sprintf)
+ * @param ...		Paràmetres del format (com a sprintf)
+ */
+#define susPrintF(fd, format, ...) ({							\
+	char *buffer;												\
+	write(fd, buffer, concat(&buffer, format, __VA_ARGS__));	\
+	free(buffer);												\
+})
+
 void ctrlCHandler() {
-	int result;
-	// TODO com indicar que està en procés d'aturada?
-	while(num_threads > 0) {
-		result = pthread_join(threads[num_threads-1], NULL);
-		if (result != 0) {
-			write(DESCRIPTOR_ERROR, ERROR_JOIN, STATIC_STRING_LEN(ERROR_JOIN));
-		}
-		num_threads--;
-	}
-	free(threads);
+	terminateThreads();
 	close(socketFD);
 	
 	saveUsersFile(users_file_path);
-	
-	regExDestroy(&command_regex);
-	regExDestroy(&login_regex);
 
 	free(ip);
 	free(users_file_path);
@@ -62,72 +58,81 @@ void ctrlCHandler() {
 static void *manageThread(void *arg) {
 	/**
 	 * -- Fremen -> Atreides --
-	 * l|<nom>|<codi>\n -> login <nom> <codi>
+	 * C|<nom>*<codi>\n -> login <nom> <codi>
 	 * s|<codi>\n -> search <codi>
 	 * [x] n|<file>\n -> send <file>
 	 * [x] p|<id>\n -> photo <id>
 	 * e|\n -> logout
 	 *
 	 * -- Atreides -> Fremen --
-	 * l|<id>\n -> login efectuat correctament
+	 * O|<id>\n -> login efectuat correctament
 	 **/
 	
 	int clientFD = *((int*)arg);
-	char *msg, *cmd;
-	char **matches = NULL, **cmd_match;
+	free(arg);
+	
+	bool exit = false;
+	Comunication data;
+	
+	RegEx regex;
+	char **cmd_match;
 	
 	int user_id = -1;
+	int search_postal;
+	SearchResults search_data;
 
-	while (matches == NULL || *matches[0] != 'e') {
-		readUntil(clientFD, &cmd, '\n');
-		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
-			switch(*matches[0]) {
-				case 'l':
-					regExSearch(&login_regex, matches[1], &cmd_match);
-					user_id = newLogin(cmd_match[0], cmd_match[1]);
+	while (!exit) {
+		switch(getMsg(clientFD, &data)) {
+			case PROTOCOL_LOGIN:
+				regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
+				if (regExSearch(&regex, data.data, &cmd_match) == REG_NOMATCH) {
+					sendLoginResponse(clientFD, -1);
 					
-					write(DESCRIPTOR_SCREEN, "Rebut login ", STATIC_STRING_LEN("Rebut login "));
-					write(DESCRIPTOR_SCREEN, cmd_match[0], strlen(cmd_match[0]));
-					write(DESCRIPTOR_SCREEN, " ", sizeof(char));
-					write(DESCRIPTOR_SCREEN, cmd_match[1], strlen(cmd_match[1]));
-					write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
-
-					write(DESCRIPTOR_SCREEN, msg, concat(&msg, "Assignat a ID %d.\n", user_id));
-					free(msg);
-					
-					// envia l'ID a Fremen
-					write(clientFD, msg, concat(&msg, "l|%d\n", user_id)); // login efectuat correctament
-					free(msg);
-					
-					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
-					
-					regExSearchFree(&login_regex, &cmd_match);
+					// no cal fer el free del resultat (no n'hi ha cap)
+					regExDestroy(&regex);
 					break;
-					
-				case 's':
-					if (user_id == -1) break;
-					break;
-				case 'n':
-					if (user_id == -1) break;
-					// TODO
-					break;
-				case 'p':
-					if (user_id == -1) break;
-					// TODO
-					break;
-				case 'e':
-					if (user_id == -1) {
-						*matches[0] = '*'; // marquem com invàl·lid per evitar que surti
-						break;
-					}
-					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
-					user_id = -1;
-					// TODO
-					break;
-			}
+				}
+				
+				user_id = newLogin(cmd_match[0], cmd_match[1]);
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
+				
+				// envia l'ID a Fremen
+				sendLoginResponse(clientFD, user_id); // login efectuat correctament
+				
+				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+				
+				regExSearchFree(&regex, &cmd_match);
+				regExDestroy(&regex);
+				break;
+				
+			case PROTOCOL_SEARCH:
+				search_postal = getSearch(&data);
+				if (search_postal == -1) {
+					// error -> enviar trama d'error
+					search_data.size = -1;
+					search_data.results = NULL;
+					sendSearchResponse(clientFD, &search_data);
+				}
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut search %d de %s %d\n", search_postal, getUser(user_id).login, user_id);
+				
+				search_data = getUsersByPostal(search_postal);
+				sendSearchResponse(clientFD, &search_data);
+				break;
+				
+			case PROTOCOL_LOGOUT:
+				if (user_id == -1) break;
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
+				write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
+				user_id = -1; // no cal, pero per si de cas
+				exit = true;
+				break;
+			
+			default:
+				write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL));
+				break;
 		}
-		regExSearchFree(&command_regex, &matches);
-		free(cmd);
 	}
 
 	// Tancar conexió
@@ -183,18 +188,12 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
-
-	command_regex = regExInit("^(.)\\|(.*)$", false);
-	login_regex = regExInit("^(.)\\|(" REGEX_INTEGER ")$", false);
-	
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
 		
 		// Creació del thread
-		// TODO protegir
-		threads = (pthread_t *)realloc(threads, sizeof(pthread_t)*(++num_threads));
-		if (pthread_create(&threads[num_threads-1], NULL, manageThread, &clientFD) /* TODO la variable 'clientFD' es destruirà abans de ser llegida? */ != 0) {
+		if (createThread(&manageThread, &clientFD, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
 	}

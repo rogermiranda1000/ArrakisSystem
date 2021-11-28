@@ -4,20 +4,20 @@ volatile Status current_status = RUNNING;
 
 char *ip, *directory;
 char *input = NULL;
-int clientFD = -1;
+
+int clientFD = -1, clientID = -1;
+char *name;
 
 /**
- * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
- * /!\ Cal fer el free del buffer /!\
- * @param buffer	On es guardarà el resultat (char**)
+ * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
+ * @param fd		FileDescriptor on imprimir la string
  * @param format	Format (com a sprintf)
  * @param ...		Paràmetres del format (com a sprintf)
- * @return			String resultant
  */
-#define concat(buffer, format, ...) ({													\
-	size_t size = snprintf(NULL, 0, format, __VA_ARGS__); /* obtè la mida resultant */	\
-	*buffer = (char*)malloc(size+1);													\
-	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
+#define susPrintF(fd, format, ...) ({							\
+	char *buffer;												\
+	write(fd, buffer, concat(&buffer, format, __VA_ARGS__));	\
+	free(buffer);												\
 })
 
 void ctrlCHandler() {
@@ -52,8 +52,10 @@ int main(int argc, char *argv[], char *envp[]) {
 	
 	write(DESCRIPTOR_SCREEN, MSG_INIT, STATIC_STRING_LEN(MSG_INIT));
 	
-	char *read;
 	char **output;
+	Comunication data;
+	SearchResults sr;
+	
 	initCommands();
 	
 	while (current_status != EXIT) {
@@ -67,18 +69,18 @@ int main(int argc, char *argv[], char *envp[]) {
 		switch(searchCommand(input, &output)) {
 			/**
 			 * -- Fremen -> Atreides --
-			 * l|<nom>|<codi>\n -> login <nom> <codi>
+			 * C|<nom>*<codi>\n -> login <nom> <codi>
 			 * s|<codi>\n -> search <codi>
 			 * [x] n|<file>\n -> send <file>
 			 * [x] p|<id>\n -> photo <id>
-			 * e|\n -> logout
+			 * Q|\n -> logout
 			 *
 			 * -- Atreides -> Fremen --
-			 * l|<id>\n -> login efectuat correctament
+			 * O|<id>\n -> login efectuat correctament
 			 **/
 			
 			case LOGIN:
-				if (clientFD >= 0) {
+				if (clientID >= 0) {
 					freeCommand(LOGIN, &output);
 					write(DESCRIPTOR_ERROR, ERROR_ALREADY_LOGGED, STATIC_STRING_LEN(ERROR_ALREADY_LOGGED));
 					break;
@@ -91,24 +93,25 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(clientFD, "l|", 2*sizeof(char));
-				write(clientFD, output[0], strlen(output[0])); // login
-				write(clientFD, "|", sizeof(char));
-				write(clientFD, output[1], strlen(output[1])); // code
-				write(clientFD, "\n", sizeof(char));
+				sendLogin(clientFD, output[0], output[1]);
 				
-				readUntil(clientFD, &read, '|');
-				if (*read != 'l') {
-					freeCommand(LOGIN, &output);
+				if (getMsg(clientFD, &data) != PROTOCOL_LOGIN_RESPONSE) {
 					write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
-					free(read);
+					
+					freeCommand(LOGIN, &output);
 					break;
 				}
-				free(read);
 				
-				clientFD = readInteger(clientFD, NULL);
-				write(DESCRIPTOR_SCREEN, read, concat(&read, "Benvingut %s. Tens ID %d.\n", output[0], clientFD));
-				free(read);
+				if ((clientID = getLoginResponse(&data)) == -1) {
+					write(DESCRIPTOR_ERROR, ERROR_ID_ASSIGNMENT, STATIC_STRING_LEN(ERROR_ID_ASSIGNMENT));
+					
+					freeCommand(LOGIN, &output);
+					break;
+				}
+				
+				name = (char*)malloc(sizeof(char)*(strlen(output[0])+1));
+				strcpy(name, output[0]);
+				susPrintF(DESCRIPTOR_SCREEN, "Benvingut %s. Tens ID %d.\n", name, clientID);
 				
 				write(DESCRIPTOR_SCREEN, MSG_CONNECTED, STATIC_STRING_LEN(MSG_CONNECTED));
 				
@@ -116,13 +119,37 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEARCH:
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // code
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+				if (clientID < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(SEARCH, &output);
+					break;
+				}
+				
+				sendSearch(clientFD, name, clientID, output[0]);
+				
+				sr = getSearchResponse(clientFD);
+				
+				if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
+				else if (sr.size == 0) susPrintF(DESCRIPTOR_SCREEN, "No hi ha cap persona humana a %s\n", output[0]);
+				else {
+					if (sr.size == 1) susPrintF(DESCRIPTOR_SCREEN, "Hi ha una persona humana a %s\n", output[0]);
+					else susPrintF(DESCRIPTOR_SCREEN, "Hi ha %ld persones humanes a %s\n", sr.size, output[0]);
+					
+					for (size_t n = 0; n < sr.size; n++) susPrintF(DESCRIPTOR_SCREEN, "%d %s\n", sr.results[n].id, sr.results[n].name);
+				}
+				
+				freeSearchResponse(&sr);
 				
 				freeCommand(SEARCH, &output);
 				break;
 				
 			case PHOTO:
+				if (clientID < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(PHOTO, &output);
+					break;
+				}
+				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 				
@@ -130,15 +157,20 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEND:
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // file
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+				if (clientID < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(SEND, &output);
+					break;
+				}
+				
+				// output[0]
 				
 				freeCommand(SEND, &output);
 				break;
 				
 			case LOGOUT:
 				current_status = EXIT;
-				clientFD = -1;
+				// el socket es tanca a terminate()
 				
 				// logout no té arguments -> no cal free
 				break;
@@ -161,9 +193,14 @@ int main(int argc, char *argv[], char *envp[]) {
 void terminate() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
 	
+	if (clientFD >= 0) {
+		sendLogout(clientFD, name, clientID);
+	}
+	
 	freeCommands();
 	
 	free(input);
 	free(ip);
 	free(directory);
+	free(name);
 }

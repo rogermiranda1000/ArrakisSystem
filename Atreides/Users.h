@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include "ConfigReader.h" // readUntil/readInteger
+#include "Comunication.h" // SearchResults
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
@@ -58,3 +59,11 @@ int newLogin(char *login, char *postal);
  * @return		Usuari guardat amb aquella ID
  */
 User getUser(int id);
+
+/**
+ * Obtè tots els usuaris amb el codi postal donat
+ * /!\ S'han d'alliberar els recursos /!\
+ * @param postal 	Codi postal a cercar
+ * @return			Usuaris de la zona
+ */
+SearchResults getUsersByPostal(int postal);
