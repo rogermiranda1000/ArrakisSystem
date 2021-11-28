@@ -118,7 +118,23 @@ static void *manageThread(void *arg) {
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut search %d de %s %d\n", search_postal, getUser(user_id).login, user_id);
 				
 				search_data = getUsersByPostal(search_postal);
+				
+				write(DESCRIPTOR_SCREEN, INFO_SEARCH, STATIC_STRING_LEN(INFO_SEARCH));
+				
+				if (search_data.size == 0) susPrintF(DESCRIPTOR_SCREEN, "No hi ha cap persona humana a %d\n", search_postal);
+				else {
+					if (search_data.size == 1) susPrintF(DESCRIPTOR_SCREEN, "Hi ha una persona humana a %d\n", search_postal);
+					else susPrintF(DESCRIPTOR_SCREEN, "Hi ha %ld persones humanes a %d\n", search_data.size, search_postal);
+					
+					for (size_t n = 0; n < search_data.size; n++) susPrintF(DESCRIPTOR_SCREEN, "%d %s\n", search_data.results[n].id, search_data.results[n].name);
+				}
+				
 				sendSearchResponse(clientFD, &search_data);
+				
+				freeSearchResponse(&search_data);
+				
+				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+				
 				break;
 				
 			case PROTOCOL_LOGOUT:
@@ -133,6 +149,7 @@ static void *manageThread(void *arg) {
 				write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL));
 				break;
 		}
+		write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 	}
 
 	// Tancar conexió
@@ -187,7 +204,6 @@ int main(int argc, char *argv[]) {
 		write(DESCRIPTOR_ERROR, ERROR_LISTEN, STATIC_STRING_LEN(ERROR_LISTEN));
 		exit(EXIT_FAILURE);
 	}
-	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);

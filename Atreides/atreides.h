@@ -27,7 +27,8 @@
 #define INFO_START				"SERVIDOR ATREIDES\n"
 #define INFO_READ_FILE			"Llegit el fitxer de configuració\n"
 #define INFO_WAITING_USERS		"Esperant connexions...\n\n"
-#define INFO_SEND				"Enviada resposta\n\n"
+#define INFO_SEND				"Enviada resposta\n"
+#define INFO_SEARCH				"Feta la cerca\n"
 
 #define USER_LOGOUT				"Desconnectat d'Atreides.\n"
 
