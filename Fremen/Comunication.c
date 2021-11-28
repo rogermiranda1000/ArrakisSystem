@@ -158,7 +158,7 @@ SearchResults getSearchResponse(int socket) {
 	
 	// obtè el número d'elements
 	int amount = 0;
-	while (*tmp != '*') {
+	while (*tmp != '*' && *tmp != '\0') {
 		amount *= 10;
 		amount += (*tmp - '0');
 		tmp++;
