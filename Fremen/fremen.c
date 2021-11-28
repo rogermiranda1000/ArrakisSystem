@@ -54,6 +54,8 @@ int main(int argc, char *argv[], char *envp[]) {
 	
 	char **output;
 	Comunication data;
+	SearchResults sr;
+	
 	initCommands();
 	
 	while (current_status != EXIT) {
@@ -123,8 +125,20 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // code
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+				sendSearch(clientFD, name, clientID, output[0]);
+				
+				sr = getSearchResponse(clientFD);
+				
+				if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
+				else if (sr.size == 0) susPrintF(DESCRIPTOR_SCREEN, "No hi ha cap persona humana a %s\n", output[0]);
+				else {
+					if (sr.size == 1) susPrintF(DESCRIPTOR_SCREEN, "Hi ha una persona humana a %s\n", output[0]);
+					else susPrintF(DESCRIPTOR_SCREEN, "Hi ha %ld persones humanes a %s\n", sr.size, output[0]);
+					
+					for (size_t n = 0; n < sr.size; n++) susPrintF(DESCRIPTOR_SCREEN, "%d %s\n", sr.results[n].id, sr.results[n].name);
+				}
+				
+				freeSearchResponse(&sr);
 				
 				freeCommand(SEARCH, &output);
 				break;
@@ -149,8 +163,7 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // file
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+				// output[0]
 				
 				freeCommand(SEND, &output);
 				break;

@@ -78,12 +78,20 @@ static void *manageThread(void *arg) {
 	char **cmd_match;
 	
 	int user_id = -1;
+	int search_postal;
+	SearchResults search_data;
 
 	while (!exit) {
 		switch(getMsg(clientFD, &data)) {
 			case PROTOCOL_LOGIN:
 				regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
-				regExSearch(&regex, data.data, &cmd_match);
+				if (regExSearch(&regex, data.data, &cmd_match) == REG_NOMATCH) {
+					sendLoginResponse(clientFD, -1);
+					
+					// no cal fer el free del resultat (no n'hi ha cap)
+					regExDestroy(&regex);
+					break;
+				}
 				
 				user_id = newLogin(cmd_match[0], cmd_match[1]);
 				
@@ -96,6 +104,21 @@ static void *manageThread(void *arg) {
 				
 				regExSearchFree(&regex, &cmd_match);
 				regExDestroy(&regex);
+				break;
+				
+			case PROTOCOL_SEARCH:
+				search_postal = getSearch(&data);
+				if (search_postal == -1) {
+					// error -> enviar trama d'error
+					search_data.size = -1;
+					search_data.results = NULL;
+					sendSearchResponse(clientFD, &search_data);
+				}
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut search %d de %s %d\n", search_postal, getUser(user_id).login, user_id);
+				
+				// TODO buscar
+				sendSearchResponse(clientFD, &search_data);
 				break;
 				
 			case PROTOCOL_LOGOUT:

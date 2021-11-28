@@ -40,6 +40,13 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'E':
 			return PROTOCOL_LOGIN_RESPONSE;
 			
+		case 'S':
+			return PROTOCOL_SEARCH;
+			
+		case 'L':
+		case 'K':
+			return PROTOCOL_SEARCH_RESPONSE;
+			
 		case 'Q':
 			return PROTOCOL_LOGOUT;
 			
@@ -57,8 +64,14 @@ void sendLoginResponse(int socket, int id) {
 	char *data;
 	Comunication trama;
 	staticLenghtCopy(trama.name, "ATREIDES", COMUNICATION_NAME_LEN);
-	trama.type = 'O';
-	concat(&data, "%d", id);
+	if (id >= 0) {
+		trama.type = 'O';
+		concat(&data, "%d", id);
+	}
+	else {
+		trama.type = 'E';
+		concat(&data, "%s", "ERROR"); // ha de tenir un argument obligatoriament
+	}
 	staticLenghtCopy(trama.data, data, DATA_LEN);
 	free(data);
 	
@@ -75,4 +88,115 @@ void sendLogout(int socket, char *name, int id) {
 	free(data);
 	
 	write(socket, &trama, sizeof(Comunication));
+}
+
+void sendSearch(int socket, char *name, int id, char *postal) {
+	char *data;
+	Comunication trama;
+	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
+	trama.type = 'S';
+	concat(&data, "%s*%d*%s", name, id, postal);
+	staticLenghtCopy(trama.data, data, DATA_LEN);
+	free(data);
+	
+	write(socket, &trama, sizeof(Comunication));
+}
+
+int getSearch(Comunication *data) {
+	int postal;
+	char **cmd_match;
+	RegEx regex = regExInit("^\\S+\\*" REGEX_INTEGER "\\*(" REGEX_INTEGER ")$", false);
+	if (regExSearch(&regex, data->data, &cmd_match) == REG_NOMATCH) {
+		// no cal fer el free del resultat (no n'hi ha cap)
+		regExDestroy(&regex);
+		return -1;
+	}
+	
+	postal = atoi(cmd_match[0]);
+	
+	regExSearchFree(&regex, &cmd_match);
+	regExDestroy(&regex);
+	
+	return postal;
+}
+
+void sendSearchResponse(int socket, SearchResults *results) {
+	// TODO
+	results++;
+	// TODO trama invàl·lida
+	
+	char *data;
+	Comunication trama;
+	staticLenghtCopy(trama.name, "ATREIDES", COMUNICATION_NAME_LEN);
+	trama.type = 'L';
+	concat(&data, "2*roger*5*uwu*%d", 9);
+	staticLenghtCopy(trama.data, data, DATA_LEN);
+	free(data);
+	
+	write(socket, &trama, sizeof(Comunication));
+}
+
+SearchResults getSearchResponse(int socket) {
+	SearchResults r;
+	Comunication data;
+	MsgType first_message = getMsg(socket, &data);
+	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, -1};
+	
+	char *text_data = (char*)malloc(sizeof(char)*(strlen(data.data)+1));
+	strcpy(text_data, data.data);
+	
+	// obtè el número d'elements
+	int amount = 0;
+	while (*text_data != '*') {
+		amount *= 10;
+		amount += (*text_data - '0');
+		text_data++;
+	}
+	r.size = amount;
+	if (amount > 0) r.results = (SearchResult*)malloc(sizeof(SearchResult)*amount);
+	else r.results = NULL;
+	
+	RegEx regex = regExInit("^\\*(\\S+)\\*(" REGEX_INTEGER ")(.*)$", false);
+	char **cmd_match;
+	while (amount > 0) {
+		if (*text_data == '\0') {
+			// s'ha esgotat la trama, però no s'ha acabat
+			free(text_data);
+			
+			first_message = getMsg(socket, &data);
+			if (first_message != PROTOCOL_SEARCH_RESPONSE) {
+				regExDestroy(&regex);
+				return r;
+			}
+			
+			text_data = (char*)malloc(sizeof(char)*(strlen(data.data)+1));
+			strcpy(text_data, data.data);
+		}
+		
+		regExSearch(&regex, text_data, &cmd_match);
+		
+		r.results[amount-1] = (SearchResult){(char*)malloc(sizeof(char)*(1+strlen(cmd_match[0]))), atoi(cmd_match[1])};
+		strcpy(r.results[amount-1].name, cmd_match[0]);
+		
+		// mou el "punter"
+		free(text_data);
+		text_data = (char*)malloc(sizeof(char)*(strlen(cmd_match[2]) + 1));
+		strcpy(text_data, cmd_match[2]);
+		
+		regExSearchFree(&regex, &cmd_match);
+		amount--;
+	}
+	
+	free(text_data);
+	regExDestroy(&regex);
+	
+	return r;
+}
+
+void freeSearchResponse(SearchResults *data) {
+	for (size_t n = 0; n < data->size; n++) free(data->results[n].name);
+	free(data->results);
+	
+	data->results = NULL;
+	data->size = 0;
 }
