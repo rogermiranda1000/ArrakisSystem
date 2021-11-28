@@ -121,3 +121,14 @@ int newLogin(char *login, char *postal) {
 User getUser(int id) {
 	return usuaris.users[id];
 }
+
+SearchResults getUsersByPostal(int postal) {
+	SearchResults r = (SearchResults){NULL, 0};
+	for (size_t x = 0; x < usuaris.len; x++) {
+		if (usuaris.users[x].postal != postal) continue;
+		r.results = (SearchResult*)realloc(r.results, sizeof(SearchResult)*(++r.size));
+		r.results[r.size-1] = (SearchResult){(char*)malloc(sizeof(char)*(1+strlen(usuaris.users[x].login))), x};
+		strcpy(r.results[r.size-1].name, usuaris.users[x].login);
+	}
+	return r;
+}

@@ -117,7 +117,7 @@ static void *manageThread(void *arg) {
 				
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut search %d de %s %d\n", search_postal, getUser(user_id).login, user_id);
 				
-				// TODO buscar
+				search_data = getUsersByPostal(search_postal);
 				sendSearchResponse(clientFD, &search_data);
 				break;
 				

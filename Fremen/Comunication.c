@@ -121,15 +121,27 @@ int getSearch(Comunication *data) {
 }
 
 void sendSearchResponse(int socket, SearchResults *results) {
-	// TODO
-	results++;
-	// TODO trama invàl·lida
-	
-	char *data;
+	char *data, *data_append, *tmp;
 	Comunication trama;
 	staticLenghtCopy(trama.name, "ATREIDES", COMUNICATION_NAME_LEN);
 	trama.type = 'L';
-	concat(&data, "2*roger*5*uwu*%d", 9);
+	concat(&data, "%ld", results->size);
+	for (size_t x = 0; x < results->size; x++) {
+		concat(&data_append, "*%s*%d", results->results[x].name, results->results[x].id);
+		if (strlen(data)+strlen(data_append) < DATA_LEN-1) {
+			concat(&tmp, "%s%s", data, data_append);
+			free(data);
+			data = tmp;
+			free(data_append);
+		}
+		else {
+			staticLenghtCopy(trama.data, data, DATA_LEN);
+			free(data);
+			data = data_append;
+			
+			write(socket, &trama, sizeof(Comunication));
+		}
+	}
 	staticLenghtCopy(trama.data, data, DATA_LEN);
 	free(data);
 	
@@ -180,7 +192,6 @@ SearchResults getSearchResponse(int socket) {
 		
 		r.results[amount-1] = (SearchResult){(char*)malloc(sizeof(char)*(1+strlen(cmd_match[0]))), atoi(cmd_match[1])};
 		strcpy(r.results[amount-1].name, cmd_match[0]);
-		write(1, r.results[amount-1].name, strlen(r.results[amount-1].name)); // TMP
 		
 		// mou el "punter"
 		free(text_data);

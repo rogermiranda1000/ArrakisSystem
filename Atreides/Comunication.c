@@ -121,15 +121,27 @@ int getSearch(Comunication *data) {
 }
 
 void sendSearchResponse(int socket, SearchResults *results) {
-	// TODO
-	results++;
-	// TODO trama invàl·lida
-	
-	char *data;
+	char *data, *data_append, *tmp;
 	Comunication trama;
 	staticLenghtCopy(trama.name, "ATREIDES", COMUNICATION_NAME_LEN);
 	trama.type = 'L';
-	concat(&data, "2*roger*5*uwu*%d", 9);
+	concat(&data, "%ld", results->size);
+	for (size_t x = 0; x < results->size; x++) {
+		concat(&data_append, "*%s*%d", results->results[x].name, results->results[x].id);
+		if (strlen(data)+strlen(data_append) < DATA_LEN-1) {
+			concat(&tmp, "%s%s", data, data_append);
+			free(data);
+			data = tmp;
+			free(data_append);
+		}
+		else {
+			staticLenghtCopy(trama.data, data, DATA_LEN);
+			free(data);
+			data = data_append;
+			
+			write(socket, &trama, sizeof(Comunication));
+		}
+	}
 	staticLenghtCopy(trama.data, data, DATA_LEN);
 	free(data);
 	
@@ -142,21 +154,24 @@ SearchResults getSearchResponse(int socket) {
 	MsgType first_message = getMsg(socket, &data);
 	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, -1};
 	
-	char *text_data = (char*)malloc(sizeof(char)*(strlen(data.data)+1));
-	strcpy(text_data, data.data);
+	char *tmp = data.data;
 	
 	// obtè el número d'elements
 	int amount = 0;
-	while (*text_data != '*') {
+	while (*tmp != '*') {
 		amount *= 10;
-		amount += (*text_data - '0');
-		text_data++;
+		amount += (*tmp - '0');
+		tmp++;
 	}
+	
 	r.size = amount;
 	if (amount > 0) r.results = (SearchResult*)malloc(sizeof(SearchResult)*amount);
 	else r.results = NULL;
 	
-	RegEx regex = regExInit("^\\*(\\S+)\\*(" REGEX_INTEGER ")(.*)$", false);
+	char *text_data = (char*)malloc(sizeof(char)*(strlen(tmp)+1));
+	strcpy(text_data, tmp);
+	
+	RegEx regex = regExInit("^\\*([^*]+)\\*(" REGEX_INTEGER ")(\\S*)$", false); // TODO fer que els noms aceptin '*'
 	char **cmd_match;
 	while (amount > 0) {
 		if (*text_data == '\0') {
