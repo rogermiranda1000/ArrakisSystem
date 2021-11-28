@@ -36,6 +36,7 @@ typedef enum {
 	PROTOCOL_SEARCH,			// Fremen solicita una busqueda
 	PROTOCOL_SEARCH_RESPONSE,	// Atreides respon a Fremen sobre la busqueda
 	// TODO altres
+	PROTOCOL_LOST,
 	PROTOCOL_UNKNOWN
 } MsgType;
 
@@ -99,8 +100,10 @@ void sendLogout(int socket, char *name, int id);
  * @param name 		Nom del usuari
  * @param id		ID del usuari
  * @param postal	Codi postal a cercar
+ * @retval true		Tot OK
+ * @retval false	Error al enviar pel socket
  */
-void sendSearch(int socket, char *name, int id, char *postal);
+bool sendSearch(int socket, char *name, int id, char *postal);
 
 /**
  * Obtè la sol·licitud de cerca
@@ -123,7 +126,7 @@ void sendSearchResponse(int socket, SearchResults *results);
  * /!\ Només cridar si getMsg() ha retornat PROTOCOL_SEARCH_RESPONSE /!\
  * /!\ El contingut retornar s'ha d'alliberar cridant freeSearchResponse() /!\
  * @param socket 	Socket de comunicació amb Atreides
- * @return			Resultats
+ * @return			Resultats (size és -1 si ha pasat algo amb la comunicació, -2 si s'ha perdut la conexió)
  */
 SearchResults getSearchResponse(int socket);
 

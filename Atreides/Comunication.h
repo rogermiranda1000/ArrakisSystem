@@ -99,8 +99,10 @@ void sendLogout(int socket, char *name, int id);
  * @param name 		Nom del usuari
  * @param id		ID del usuari
  * @param postal	Codi postal a cercar
+ * @retval true		Tot OK
+ * @retval false	Error al enviar pel socket
  */
-void sendSearch(int socket, char *name, int id, char *postal);
+bool sendSearch(int socket, char *name, int id, char *postal);
 
 /**
  * Obtè la sol·licitud de cerca

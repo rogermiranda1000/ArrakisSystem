@@ -28,6 +28,8 @@
 #define ERROR_COMUNICATION		"S'esperava un altre resposta per part d'Atreides\n"
 #define ERROR_ID_ASSIGNMENT		"Atreides ha retornat una ID invàl·lida\n"
 
+#define WARNING_LOST_CONNECTION	"Atreides s'ha desconectat\n"
+
 typedef enum {
 	WAITING,	// en un read()
 	EXIT,		// ha saltat interrupció estant en estat 'RUNNING'; apaga quan pugui

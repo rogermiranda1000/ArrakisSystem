@@ -34,11 +34,21 @@ void ctrlCHandler() {
 	}
 }
 
+void lostConnection() {
+	write(DESCRIPTOR_ERROR, WARNING_LOST_CONNECTION, STATIC_STRING_LEN(WARNING_LOST_CONNECTION));
+	
+	clientID = -1; // estableix el client com desconectat
+	
+	// tanca la conexió
+	close(clientFD);
+	clientFD = -1;
+}
+
 int main(int argc, char *argv[], char *envp[]) {
 	unsigned int timeClean;
 	unsigned short port;
 
-	signal(SIGINT, ctrlCHandler); // reprograma Control+C
+	signal(SIGINT, ctrlCHandler);	// reprograma Control+C
 	
 	if (argc < 2) {
 		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -129,16 +139,19 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				sr = getSearchResponse(clientFD);
 				
-				if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
+				if (sr.size == (size_t)-2) {
+					lostConnection();
+					break;
+				}
+				else if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
 				else if (sr.size == 0) susPrintF(DESCRIPTOR_SCREEN, "No hi ha cap persona humana a %s\n", output[0]);
 				else {
 					if (sr.size == 1) susPrintF(DESCRIPTOR_SCREEN, "Hi ha una persona humana a %s\n", output[0]);
 					else susPrintF(DESCRIPTOR_SCREEN, "Hi ha %ld persones humanes a %s\n", sr.size, output[0]);
 					
 					for (size_t n = 0; n < sr.size; n++) susPrintF(DESCRIPTOR_SCREEN, "%d %s\n", sr.results[n].id, sr.results[n].name);
+					freeSearchResponse(&sr);
 				}
-				
-				freeSearchResponse(&sr);
 				
 				freeCommand(SEARCH, &output);
 				break;

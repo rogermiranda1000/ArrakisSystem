@@ -31,6 +31,7 @@ void sendLogin(int socket, char *name, char *postal) {
 }
 
 MsgType getMsg(int socket, Comunication *data) {
+	data->type = '*'; // per si dona error, que retorni desconegut
 	read(socket, data, sizeof(Comunication));
 	switch(data->type) {
 		case 'C':
@@ -50,6 +51,9 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'Q':
 			return PROTOCOL_LOGOUT;
 			
+		case '*':
+			return PROTOCOL_LOST;
+		
 		default:
 			return PROTOCOL_UNKNOWN;
 	}
@@ -90,7 +94,7 @@ void sendLogout(int socket, char *name, int id) {
 	write(socket, &trama, sizeof(Comunication));
 }
 
-void sendSearch(int socket, char *name, int id, char *postal) {
+bool sendSearch(int socket, char *name, int id, char *postal) {
 	char *data;
 	Comunication trama;
 	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
@@ -99,7 +103,7 @@ void sendSearch(int socket, char *name, int id, char *postal) {
 	staticLenghtCopy(trama.data, data, DATA_LEN);
 	free(data);
 	
-	write(socket, &trama, sizeof(Comunication));
+	return write(socket, &trama, sizeof(Comunication)) == sizeof(Comunication);
 }
 
 int getSearch(Comunication *data) {
@@ -152,7 +156,7 @@ SearchResults getSearchResponse(int socket) {
 	SearchResults r;
 	Comunication data;
 	MsgType first_message = getMsg(socket, &data);
-	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, -1};
+	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, (first_message == PROTOCOL_LOST) ? -2 : -1};
 	
 	char *tmp = data.data;
 	
