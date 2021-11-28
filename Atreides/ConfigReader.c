@@ -57,12 +57,10 @@ int readInteger(int fd, char *stop) {
 	return negative ? -r : r;
 }
 
-int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* port, char** directory) {
+int readConfig(char* name, char** ip, unsigned short* port, char** directory) {
 	int file = open(name, O_RDONLY);
-	if (file < 0) {
-		return -1;
-	}
-	*timeClean = readInteger(file, NULL);
+	if (file < 0) return -1;
+	
 	readUntil(file, ip, '\n');
 	*port = readInteger(file, NULL);
 	readUntil(file, directory, '\n');
