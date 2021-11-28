@@ -49,7 +49,7 @@ void emptyUsers() {
 }
 
 int loadUsersFile(char *path) {
-	int file = open(path, O_RDWR);
+	int file = open(path, O_RDONLY);
     
     if (file < 0) return -1; // no hi ha fitxer -> deixar usuaris tal com està
 
@@ -59,7 +59,7 @@ int loadUsersFile(char *path) {
 		userFound = NULL;
 		postalFound = NULL;
 		
-        if (readUntil(file, &userFound,',') == 0 || readUntil(file, &postalFound,'\n')) {
+        if (readUntil(file, &userFound,',') == 0 || readUntil(file, &postalFound,'\n') == 0) {
 			free(userFound);
 			free(postalFound);
 			close(file);
@@ -77,7 +77,7 @@ int loadUsersFile(char *path) {
 }
 
 int saveUsersFile(char *path) {
-	int file = open(path, O_RDWR | O_CREAT);
+	int file = open(path, O_WRONLY | O_CREAT, 00666);
 	
 	if (file < 0) return file;
 	
