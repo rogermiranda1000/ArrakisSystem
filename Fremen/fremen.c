@@ -7,20 +7,6 @@ char *input = NULL;
 int clientFD = -1;
 
 /**
- * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
- * /!\ Cal fer el free del buffer /!\
- * @param buffer	On es guardarà el resultat (char**)
- * @param format	Format (com a sprintf)
- * @param ...		Paràmetres del format (com a sprintf)
- * @return			String resultant
- */
-#define concat(buffer, format, ...) ({													\
-	size_t size = snprintf(NULL, 0, format, __VA_ARGS__); /* obtè la mida resultant */	\
-	*buffer = (char*)malloc(size+1);													\
-	sprintf(*buffer, format, __VA_ARGS__); /* retorna la mida */						\
-})
-
-/**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), imprimeix la string
  * @param fd		FileDescriptor on imprimir la string
  * @param format	Format (com a sprintf)
@@ -104,11 +90,7 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(clientFD, "C|", 2*sizeof(char));
-				write(clientFD, output[0], strlen(output[0])); // login
-				write(clientFD, "*", sizeof(char));
-				write(clientFD, output[1], strlen(output[1])); // code
-				write(clientFD, "\n", sizeof(char));
+				sendLogin(clientFD, output[0], output[1]);
 				
 				readUntil(clientFD, &read, '|');
 				if (*read != 'O') {

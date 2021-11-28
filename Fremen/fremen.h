@@ -4,6 +4,7 @@
 #include "ConfigReader.h"
 #include "Commands.h"
 #include "Socket.h"
+#include "Comunication.h"
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h> // exit
