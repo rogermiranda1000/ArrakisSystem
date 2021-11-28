@@ -38,6 +38,14 @@ typedef enum {
 } MsgType;
 
 /**
+ * Obtè un missatge
+ * @param socket 	Socket d'on escoltar
+ * @param data		Trama obtinguda
+ * @return			Tipu de trama obtinguda
+ */
+MsgType getMsg(int socket, Comunication *data);
+
+/**
  * Fremen -> Atreides
  * Envia login
  * @param socket 	Socket de comunicació amb Atreides
@@ -47,9 +55,27 @@ typedef enum {
 void sendLogin(int socket, char *name, char *postal);
 
 /**
- * Obtè un missatge
- * @param socket 	Socket d'on escoltar
- * @param data		Trama obtinguda
- * @return			Tipu de trama obtinguda
+ * Obtè les dades de la variable data
+ * /!\ Només cridar si getMsg() ha retornat PROTOCOL_LOGIN_RESPONSE /!\
+ * @param data		Punter a la trama obtinguda
+ * @return			ID obtingut; -1 si error
  */
-MsgType getMsg(int socket, Comunication *data);
+int getLoginResponse(Comunication *data);
+
+
+/**
+ * Atreides -> Fremen
+ * Envia l'OK del login
+ * @param socket 	Socket de comunicació amb Atreides
+ * @param id 		ID asignat al usuari
+ */
+void sendLoginResponse(int socket, int id);
+
+/**
+ * Fremen -> Atreides
+ * Envia logout
+ * @param socket 	Socket de comunicació amb Atreides
+ * @param name 		Nom del usuari
+ * @param id		ID del usuari
+ */
+void sendLogout(int socket, char *name, int id);

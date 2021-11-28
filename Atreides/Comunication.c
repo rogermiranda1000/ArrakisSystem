@@ -47,3 +47,32 @@ MsgType getMsg(int socket, Comunication *data) {
 			return PROTOCOL_UNKNOWN;
 	}
 }
+
+int getLoginResponse(Comunication *data) {
+	if (data->type == 'E') return -1;
+	return atoi(data->data);
+}
+
+void sendLoginResponse(int socket, int id) {
+	char *data;
+	Comunication trama;
+	staticLenghtCopy(trama.name, "ATREIDES", COMUNICATION_NAME_LEN);
+	trama.type = 'O';
+	concat(&data, "%d", id);
+	staticLenghtCopy(trama.data, data, DATA_LEN);
+	free(data);
+	
+	write(socket, &trama, sizeof(Comunication));
+}
+
+void sendLogout(int socket, char *name, int id) {
+	char *data;
+	Comunication trama;
+	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
+	trama.type = 'Q';
+	concat(&data, "%s*%d", name, id);
+	staticLenghtCopy(trama.data, data, DATA_LEN);
+	free(data);
+	
+	write(socket, &trama, sizeof(Comunication));
+}

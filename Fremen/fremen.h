@@ -26,6 +26,7 @@
 #define ERROR_NO_CONNECTION		"No estas conectat a Atreides\n"
 #define ERROR_SOCKET			"Error al crear el socket\n"
 #define ERROR_COMUNICATION		"S'esperava un altre resposta per part d'Atreides\n"
+#define ERROR_ID_ASSIGNMENT		"Atreides ha retornat una ID invàl·lida\n"
 
 typedef enum {
 	WAITING,	// en un read()

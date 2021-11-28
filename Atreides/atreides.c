@@ -90,7 +90,7 @@ static void *manageThread(void *arg) {
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
 				
 				// envia l'ID a Fremen
-				susPrintF(clientFD, "O|%d\n", user_id); // login efectuat correctament
+				sendLoginResponse(clientFD, user_id); // login efectuat correctament
 				
 				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
 				
