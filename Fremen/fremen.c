@@ -195,6 +195,7 @@ void terminate() {
 	
 	if (clientFD >= 0) {
 		sendLogout(clientFD, name, clientID);
+		close(clientFD);
 	}
 	
 	freeCommands();
