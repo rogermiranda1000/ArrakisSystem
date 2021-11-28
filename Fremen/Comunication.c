@@ -151,14 +151,15 @@ SearchResults getSearchResponse(int socket) {
 		amount += (*tmp - '0');
 		tmp++;
 	}
+	
 	r.size = amount;
 	if (amount > 0) r.results = (SearchResult*)malloc(sizeof(SearchResult)*amount);
 	else r.results = NULL;
 	
-	char *text_data = (char*)malloc(sizeof(char)*(strlen(data.data)+1));
+	char *text_data = (char*)malloc(sizeof(char)*(strlen(tmp)+1));
 	strcpy(text_data, tmp);
 	
-	RegEx regex = regExInit("^\\*(\\S+)\\*(" REGEX_INTEGER ")(.*)$", false);
+	RegEx regex = regExInit("^\\*([^*]+)\\*(" REGEX_INTEGER ")(\\S*)$", false); // TODO fer que els noms aceptin '*'
 	char **cmd_match;
 	while (amount > 0) {
 		if (*text_data == '\0') {
@@ -179,6 +180,7 @@ SearchResults getSearchResponse(int socket) {
 		
 		r.results[amount-1] = (SearchResult){(char*)malloc(sizeof(char)*(1+strlen(cmd_match[0]))), atoi(cmd_match[1])};
 		strcpy(r.results[amount-1].name, cmd_match[0]);
+		write(1, r.results[amount-1].name, strlen(r.results[amount-1].name)); // TMP
 		
 		// mou el "punter"
 		free(text_data);
