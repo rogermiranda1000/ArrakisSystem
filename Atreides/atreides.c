@@ -62,14 +62,14 @@ void ctrlCHandler() {
 static void *manageThread(void *arg) {
 	/**
 	 * -- Fremen -> Atreides --
-	 * l|<nom>|<codi>\n -> login <nom> <codi>
+	 * C|<nom>*<codi>\n -> login <nom> <codi>
 	 * s|<codi>\n -> search <codi>
 	 * [x] n|<file>\n -> send <file>
 	 * [x] p|<id>\n -> photo <id>
 	 * e|\n -> logout
 	 *
 	 * -- Atreides -> Fremen --
-	 * l|<id>\n -> login efectuat correctament
+	 * O|<id>\n -> login efectuat correctament
 	 **/
 	
 	int clientFD = *((int*)arg);
@@ -85,14 +85,14 @@ static void *manageThread(void *arg) {
 		readUntil(clientFD, &cmd, '\n');
 		if (regExSearch(&command_regex, cmd, &matches) == EXIT_SUCCESS) {
 			switch(*matches[0]) {
-				case 'l':
+				case 'C':
 					regExSearch(&login_regex, matches[1], &cmd_match);
 					user_id = newLogin(cmd_match[0], cmd_match[1]);
 					
 					susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
 					
 					// envia l'ID a Fremen
-					susPrintF(clientFD, "l|%d\n", user_id); // login efectuat correctament
+					susPrintF(clientFD, "O|%d\n", user_id); // login efectuat correctament
 					
 					write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
 					
@@ -110,7 +110,7 @@ static void *manageThread(void *arg) {
 					if (user_id == -1) break;
 					// TODO
 					break;
-				case 'e':
+				case 'Q':
 					if (user_id == -1) break;
 					susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
 					write(DESCRIPTOR_SCREEN, USER_LOGOUT, STATIC_STRING_LEN(USER_LOGOUT));
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 
 	command_regex = regExInit("^(\\S)\\|(\\S*)$", false);
-	login_regex = regExInit("^(\\S+)\\|(" REGEX_INTEGER ")$", false);
+	login_regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
 	
 	
 	while (true) {

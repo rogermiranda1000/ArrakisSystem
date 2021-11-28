@@ -80,14 +80,14 @@ int main(int argc, char *argv[], char *envp[]) {
 		switch(searchCommand(input, &output)) {
 			/**
 			 * -- Fremen -> Atreides --
-			 * l|<nom>|<codi>\n -> login <nom> <codi>
+			 * C|<nom>*<codi>\n -> login <nom> <codi>
 			 * s|<codi>\n -> search <codi>
 			 * [x] n|<file>\n -> send <file>
 			 * [x] p|<id>\n -> photo <id>
-			 * e|\n -> logout
+			 * Q|\n -> logout
 			 *
 			 * -- Atreides -> Fremen --
-			 * l|<id>\n -> login efectuat correctament
+			 * O|<id>\n -> login efectuat correctament
 			 **/
 			
 			case LOGIN:
@@ -104,14 +104,14 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				write(clientFD, "l|", 2*sizeof(char));
+				write(clientFD, "C|", 2*sizeof(char));
 				write(clientFD, output[0], strlen(output[0])); // login
-				write(clientFD, "|", sizeof(char));
+				write(clientFD, "*", sizeof(char));
 				write(clientFD, output[1], strlen(output[1])); // code
 				write(clientFD, "\n", sizeof(char));
 				
 				readUntil(clientFD, &read, '|');
-				if (*read != 'l') {
+				if (*read != 'O') {
 					freeCommand(LOGIN, &output);
 					write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 					free(read);
@@ -192,7 +192,7 @@ void terminate() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
 	
 	if (clientFD >= 0) {
-		write(clientFD, "e|\n", 3*sizeof(char));
+		write(clientFD, "Q|\n", 3*sizeof(char));
 		close(clientFD);
 	}
 	
