@@ -90,6 +90,7 @@ int saveUsersFile(char *path) {
 		free(entry);
 	}
 	
+    close(file);
 	emptyUsers(); // allibera memoria
 	return 0;
 }
