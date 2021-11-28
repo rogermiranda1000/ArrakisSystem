@@ -7,7 +7,6 @@
 
 #define COMUNICATION_NAME_LEN 	15
 #define DATA_LEN				240
-#define LOGIN_USER_MAX_LEN		(DATA_LEN - 10) // s'ha d'enviar '<nom>*<codi postal>', '*<codi postal>' pot ocupar fins a 10 caracters
 
 /**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
@@ -31,7 +30,7 @@ typedef struct {
 
 typedef enum {
 	PROTOCOL_LOGIN,				// Fremen fa login a Atreides
-	PROTOCOL_LOGIN_RESPONSE,	// Atreides dona l'OK al login de Fremen
+	PROTOCOL_LOGIN_RESPONSE,	// Atreides dona l'OK/error al login de Fremen
 	PROTOCOL_LOGOUT,			// Fremen fa logout d'Atreides
 	PROTOCOL_SEARCH,
 	// TODO altres

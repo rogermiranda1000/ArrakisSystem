@@ -30,7 +30,7 @@ typedef struct {
 
 typedef enum {
 	PROTOCOL_LOGIN,				// Fremen fa login a Atreides
-	PROTOCOL_LOGIN_RESPONSE,	// Atreides dona l'OK al login de Fremen
+	PROTOCOL_LOGIN_RESPONSE,	// Atreides dona l'OK/error al login de Fremen
 	PROTOCOL_LOGOUT,			// Fremen fa logout d'Atreides
 	PROTOCOL_SEARCH,
 	// TODO altres

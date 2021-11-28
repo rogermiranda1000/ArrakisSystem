@@ -5,7 +5,6 @@
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
 char *ip = NULL, *users_file_path = NULL;
-RegEx login_regex;
 int socketFD;
 
 // TODO player FD
@@ -43,8 +42,6 @@ void ctrlCHandler() {
 	close(socketFD);
 	
 	saveUsersFile(users_file_path);
-	
-	regExDestroy(&login_regex);
 
 	free(ip);
 	free(users_file_path);
@@ -77,13 +74,17 @@ static void *manageThread(void *arg) {
 	bool exit = false;
 	Comunication data;
 	
+	RegEx regex;
+	char **cmd_match;
+	
 	int user_id = -1;
 
 	while (!exit) {
 		switch(getMsg(clientFD, &data)) {
 			case PROTOCOL_LOGIN:
-				write(DESCRIPTOR_SCREEN, "!\n", 2);
-				/*regExSearch(&login_regex, matches[1], &cmd_match);
+				regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
+				regExSearch(&regex, data.data, &cmd_match);
+				
 				user_id = newLogin(cmd_match[0], cmd_match[1]);
 				
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut login de %s %s\nAssignat a ID %d.\n", cmd_match[0], cmd_match[1], user_id);
@@ -93,7 +94,8 @@ static void *manageThread(void *arg) {
 				
 				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
 				
-				regExSearchFree(&login_regex, &cmd_match);*/
+				regExSearchFree(&regex, &cmd_match);
+				regExDestroy(&regex);
 				break;
 				
 			case PROTOCOL_LOGOUT:
@@ -163,9 +165,6 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
-
-	login_regex = regExInit("^(\\S+)\\*(" REGEX_INTEGER ")$", false);
-	
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);

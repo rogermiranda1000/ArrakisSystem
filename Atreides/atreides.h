@@ -10,9 +10,9 @@
 #include <string.h>     // strcpy
 #include "ConfigReader.h"
 #include "Users.h"
-#include "RegExSearcher.h"
 #include "Threads.h"
 #include "Comunication.h"
+#include "RegExSearcher.h"
 
 #define SOCKET_QUEUE 10
 

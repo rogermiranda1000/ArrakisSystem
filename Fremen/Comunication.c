@@ -36,6 +36,13 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'C':
 			return PROTOCOL_LOGIN;
 			
+		case 'O':
+		case 'E':
+			return PROTOCOL_LOGIN_RESPONSE;
+			
+		case 'Q':
+			return PROTOCOL_LOGOUT;
+			
 		default:
 			return PROTOCOL_UNKNOWN;
 	}
