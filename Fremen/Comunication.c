@@ -18,6 +18,24 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 	}
 }
 
+void sendPhoto(int socket, char *photoName, int photoFd) {
+	char *data;
+	Communication msg;
+	char* fileSize;
+
+	fseek(photoFd, 0L, SEEK_END);
+	concat(&fileSize, "%d", ftell(photoFd));
+
+	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
+	msg.type = 'F';
+	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
+	staticLenghtCopy(msg.data, data, DATA_LEN);
+	free(data);
+	free(fileSize);
+	
+	write(socket, &msg, sizeof(Comunication));
+}
+
 void sendLogin(int socket, char *name, char *postal) {
 	char *data;
 	Comunication trama;
