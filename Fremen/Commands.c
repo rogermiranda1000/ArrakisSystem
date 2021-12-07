@@ -41,7 +41,7 @@ CommandResult searchCommand(char *input, char ***output) {
 	}
 	else if (r == EXIT_SUCCESS) return SEND;
 	
-	if (regExGet(&logout_regex, input) == EXIT_SUCCESS) return LOGOUT; // logout no té arguments -> no pot tenir malloc error
+	if (regExSearch(&logout_regex, input, output) == EXIT_SUCCESS) return LOGOUT; // logout no té arguments -> no pot tenir malloc error
 	
 	return NO_MATCH;
 }

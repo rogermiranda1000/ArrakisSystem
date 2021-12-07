@@ -12,11 +12,12 @@
  *			[en principi, només es retornarà el PID del fill al pare;
  *			com a màxim retornarà -1 si error_call no fa exit]
  */
-#define FORK_CODE(son_call, error_call) ({				\
+#define FORK_CODE(freeMallocs, son_call, error_call) ({	\
 	int r = fork();										\
 	if (r == -1) error_call;							\
 	else if (r == FORK_SON) {							\
 		/* fill -> cridar a la funció i sortir */		\
+		freeMallocs;									\
 		son_call;										\
 		exit(0);										\
 	}													\
@@ -26,47 +27,46 @@
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-int executeProgram(char *cmd, char *argv[], char *envp[]) {
+int executeProgram(char *cmd, char *argv[], char *envp[], void (*freeMallocs)()) {
 	int r = CREATE_FORK_ERROR;
 	
 	// obtiene la ruta absoluta
-	char *absolute_cmd = (char*)malloc(sizeof(char)*(strlen(cmd) + 1 + STATIC_STRING_LEN(LINUX_PROGRAM_DIR)));
+	char absolute_cmd[CMD_MAX_LEN];
 	strcpy(absolute_cmd, LINUX_PROGRAM_DIR);
 	strcat(absolute_cmd, cmd);
 	
-	pid_t son = FORK_CODE(exit(execvpe(absolute_cmd, argv, envp)),);
+	pid_t son = FORK_CODE((*freeMallocs)(), exit(execvpe(absolute_cmd, argv, envp)),);
 	if (son != CREATE_FORK_ERROR) {
 		if (waitpid(son, &r, WUNTRACED | WCONTINUED) == -1) r = WAIT_FORK_ERROR;
 	}
 	
-	free(absolute_cmd);
 	return r;
 }
 
-int executeProgramLine(char *cmd, char *envp[]) {
+int executeProgramLine(char **cmd, char *envp[], void (*freeMallocs)()) {
 	int r, size = 0;
-	char **argv = NULL;
-	char *iter = cmd;
+	char *argv[ARGV_MAX_LEN], cpy_cmd[CMD_MAX_LEN];
+	char *iter = cpy_cmd;
 	
-	argv = (char**)malloc(sizeof(char*));
+	// al fer el fork s'ha d'alliberar tota memoria del pare
+	strcpy(cpy_cmd, *cmd);
+	free(*cmd);
+	*cmd = NULL;
+	
 	argv[size++] = iter;
 	
 	while (*iter != '\0') {
 		if (*iter == ' ') {
 			*iter = '\0';
-			argv = (char**)realloc(argv, sizeof(char*)*(size+1));
 			argv[size++] = iter+1;
 		}
 		iter++;
 	}
 	
 	// l'últim element ha d'acabar en NULL
-	argv = (char**)realloc(argv, sizeof(char*)*(size+1));
 	argv[size++] = NULL;
 	
-	r = executeProgram(argv[0], argv, envp);
-	
-	free(argv);
+	r = executeProgram(argv[0], argv, envp, freeMallocs);
 	
 	return r;
 }
