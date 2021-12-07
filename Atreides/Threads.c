@@ -75,7 +75,9 @@ void terminateThreads() {
 	Node *current = head, *next;
 	head = NULL; // TODO protegir (entre el 'current = head' i 'head = NULL')
 	while(current != NULL) {
-		// TODO join
+		pthread_cancel(current->thread);
+		pthread_join(current->thread, NULL);
+		
 		next = current->next;
 		free(current);
 		

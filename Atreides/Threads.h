@@ -4,6 +4,7 @@
 #include <stdlib.h>		// malloc/free
 #include <string.h>		// memccpy
 #include <stdbool.h>	// true/false/bool
+#include <signal.h>		// signals
 
 /**
  * Uneix els threads que ja han acabat i els elimina de la llista
