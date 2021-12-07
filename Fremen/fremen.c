@@ -22,7 +22,7 @@ char *name;
 
 void ctrlCHandler() {
 	if (current_status == WAITING) {
-		terminate();
+		secureTermination();
 		
 		signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 		raise(SIGINT);
@@ -189,7 +189,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 			
 			case NO_MATCH:
-				if (executeProgramLine(input, envp) != 0) write(DESCRIPTOR_ERROR, ERROR_EXECUTE, STATIC_STRING_LEN(ERROR_EXECUTE));
+				if (executeProgramLine(&input, envp, &terminate) != 0) write(DESCRIPTOR_ERROR, ERROR_EXECUTE, STATIC_STRING_LEN(ERROR_EXECUTE));
 				break;
 				
 			case ERROR:
@@ -198,18 +198,24 @@ int main(int argc, char *argv[], char *envp[]) {
 		}
 	}
 	
-	terminate();
+	secureTermination();
 	
 	return 0;
 }
 
-void terminate() {
+void secureTermination() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
 	
 	if (clientFD >= 0) {
 		sendLogout(clientFD, name, clientID);
-		close(clientFD);
+		// el socket es tanca a terminate()
 	}
+	
+	terminate();
+}
+
+void terminate() {
+	if (clientFD >= 0) close(clientFD);
 	
 	freeCommands();
 	

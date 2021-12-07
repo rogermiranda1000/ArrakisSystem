@@ -46,4 +46,9 @@ void ctrlCHandler();
 /**
  * Allibera tota memoria global reservada, donant abans un missatge informatiu
  */
+void secureTermination();
+
+/**
+ * Allibera tota memoria global reservada
+ */
 void terminate();
