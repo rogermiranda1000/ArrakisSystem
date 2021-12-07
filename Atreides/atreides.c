@@ -52,6 +52,17 @@ void ctrlCHandler() {
 }
 
 /**
+ * Allibera tots els recursos de manageThread()
+ * @param arg	Informació necesaria per alliberar els recursos
+ */
+static void freeThread(void *arg) {
+	int clientFD = *((int*)arg);
+	free(arg);
+	
+	close(clientFD);
+}
+
+/**
  * Gestiona la connexió amb un Fremen particular
  * @param arg	
  */
@@ -69,7 +80,8 @@ static void *manageThread(void *arg) {
 	 **/
 	
 	int clientFD = *((int*)arg);
-	free(arg);
+	// el free es fa a freeThread
+	pthread_cleanup_push(freeThread, arg);
 	
 	bool exit = false;
 	Comunication data;
@@ -144,17 +156,16 @@ static void *manageThread(void *arg) {
 				user_id = -1; // no cal, pero per si de cas
 				exit = true;
 				break;
-			
+				
 			default:
-				write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL));
+				exit = true;
 				break;
 		}
 		write(DESCRIPTOR_SCREEN, INFO_WAITING_USERS, STATIC_STRING_LEN(INFO_WAITING_USERS));
 	}
 
 	// Tancar conexió
-	close(clientFD);
-	clientFD = 0;
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 

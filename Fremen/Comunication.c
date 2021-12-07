@@ -31,8 +31,7 @@ void sendLogin(int socket, char *name, char *postal) {
 }
 
 MsgType getMsg(int socket, Comunication *data) {
-	data->type = '*'; // per si dona error, que retorni desconegut
-	read(socket, data, sizeof(Comunication));
+	if (read(socket, data, sizeof(Comunication)) != sizeof(Comunication)) return PROTOCOL_UNKNOWN;
 	switch(data->type) {
 		case 'C':
 			return PROTOCOL_LOGIN;
@@ -51,9 +50,6 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'Q':
 			return PROTOCOL_LOGOUT;
 			
-		case '*':
-			return PROTOCOL_LOST;
-		
 		default:
 			return PROTOCOL_UNKNOWN;
 	}
@@ -156,7 +152,7 @@ SearchResults getSearchResponse(int socket) {
 	SearchResults r;
 	Comunication data;
 	MsgType first_message = getMsg(socket, &data);
-	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, (first_message == PROTOCOL_LOST) ? -2 : -1};
+	if (first_message != PROTOCOL_SEARCH_RESPONSE || data.type == 'K') return (SearchResults){NULL, -1};
 	
 	char *tmp = data.data;
 	

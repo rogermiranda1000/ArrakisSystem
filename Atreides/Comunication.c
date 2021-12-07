@@ -31,8 +31,7 @@ void sendLogin(int socket, char *name, char *postal) {
 }
 
 MsgType getMsg(int socket, Comunication *data) {
-	data->type = '*'; // per si dona error, que retorni desconegut
-	read(socket, data, sizeof(Comunication));
+	if (read(socket, data, sizeof(Comunication)) != sizeof(Comunication)) return PROTOCOL_UNKNOWN;
 	switch(data->type) {
 		case 'C':
 			return PROTOCOL_LOGIN;
@@ -51,7 +50,6 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'Q':
 			return PROTOCOL_LOGOUT;
 			
-		case '*':
 		default:
 			return PROTOCOL_UNKNOWN;
 	}
