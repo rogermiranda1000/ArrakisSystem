@@ -62,6 +62,15 @@ MsgType getMsg(int socket, Comunication *data);
  * Fremen -> Atreides
  * Envia login
  * @param socket 	Socket de comunicació amb Atreides
+ * @param photoName Nom de la foto
+ * @param photoFd 	File descriptor de la foto
+ */
+void sendPhoto(int socket, char *photoName, int photoFd);
+
+/**
+ * Fremen -> Atreides
+ * Envia login
+ * @param socket 	Socket de comunicació amb Atreides
  * @param name 		Nom del usuari
  * @param postal 	Codi postal
  */
