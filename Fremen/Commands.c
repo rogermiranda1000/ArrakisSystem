@@ -4,10 +4,10 @@ RegEx login_regex, logout_regex, search_regex, photo_regex, send_regex;
 
 void initCommands() {
 	login_regex = regExInit("^LOGIN\\s*(\\S{1,230})?\\s*(" REGEX_INTEGER ")?(.*)$", true); // 230 son els màxims caracters com a usuari que el protocol establert pot suportar
-	logout_regex = regExInit("^LOGOUT$", true);
-	search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true);
-	photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true);
-	send_regex = regExInit("^SEND\\s+(\\S+)$", true);
+	logout_regex = regExInit("^LOGOUT(\\s*.*)$", true);
+	search_regex = regExInit("^SEARCH\\s*(" REGEX_INTEGER ")?(.*)$", true);
+	photo_regex = regExInit("^PHOTO\\s*(" REGEX_INTEGER ")?(.*)$", true);
+	send_regex = regExInit("^SEND\\s*(\\S+)?(.*)$", true);
 }
 
 CommandResult searchCommand(char *input, char ***output) {
@@ -32,23 +32,55 @@ CommandResult searchCommand(char *input, char ***output) {
 		regExSearchFree(&search_regex, output);
 		return ERROR;
 	}
-	else if (r == EXIT_SUCCESS) return SEARCH;
+	else if (r == EXIT_SUCCESS) {
+		if (*(*output)[0] == '\0' || *(*output)[1] != '\0') {
+			regExSearchFree(&search_regex, output);
+			return SEARCH_INVALID;
+		}
+		
+		return SEARCH;
+	}
 	
 	r = regExSearch(&photo_regex, input, output);
 	if (r == MALLOC_ERROR) {
 		regExSearchFree(&photo_regex, output);
 		return ERROR;
 	}
-	else if (r == EXIT_SUCCESS) return PHOTO;
+	else if (r == EXIT_SUCCESS) {
+		if (*(*output)[0] == '\0' || *(*output)[1] != '\0') {
+			regExSearchFree(&photo_regex, output);
+			return PHOTO_INVALID;
+		}
+		return PHOTO;
+	}
 	
 	r = regExSearch(&send_regex, input, output);
 	if (r == MALLOC_ERROR) {
 		regExSearchFree(&send_regex, output);
 		return ERROR;
 	}
-	else if (r == EXIT_SUCCESS) return SEND;
+	else if (r == EXIT_SUCCESS) {
+		if (*(*output)[0] == '\0' || *(*output)[1] != '\0') {
+			regExSearchFree(&send_regex, output);
+			return SEND_INVALID;
+		}
+		return SEND;
+	}
 	
-	if (regExSearch(&logout_regex, input, output) == EXIT_SUCCESS) return LOGOUT; // logout no té arguments -> no pot tenir malloc error
+	r = regExSearch(&logout_regex, input, output);
+	if (r == MALLOC_ERROR) {
+		regExSearchFree(&logout_regex, output);
+		return ERROR;
+	}
+	else if (r == EXIT_SUCCESS) {
+		if (*(*output)[0] != '\0') {
+			regExSearchFree(&logout_regex, output);
+			return LOGOUT_INVALID;
+		}
+		
+		regExSearchFree(&logout_regex, output);
+		return LOGOUT;
+	}
 	
 	return NO_MATCH;
 }

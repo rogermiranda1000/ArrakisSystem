@@ -129,7 +129,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case LOGIN_INVALID:
-				write(DESCRIPTOR_SCREEN, ERROR_LOGIN_ARGS, STATIC_STRING_LEN(ERROR_LOGIN_ARGS));
+				write(DESCRIPTOR_ERROR, ERROR_LOGIN_ARGS, STATIC_STRING_LEN(ERROR_LOGIN_ARGS));
 				break;
 				
 			case SEARCH:
@@ -160,6 +160,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(SEARCH, &output);
 				break;
 				
+			case SEARCH_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_SEARCH_ARGS, STATIC_STRING_LEN(ERROR_SEARCH_ARGS));
+				break;
+				
 			case PHOTO:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
@@ -171,6 +175,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
 				
 				freeCommand(PHOTO, &output);
+				break;
+				
+			case PHOTO_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_PHOTO_ARGS, STATIC_STRING_LEN(ERROR_PHOTO_ARGS));
 				break;
 				
 			case SEND:
@@ -185,11 +193,19 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(SEND, &output);
 				break;
 				
+			case SEND_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_SEND_ARGS, STATIC_STRING_LEN(ERROR_SEND_ARGS));
+				break;
+				
 			case LOGOUT:
 				current_status = EXIT;
 				// el socket es tanca a terminate()
 				
 				// logout no té arguments -> no cal free
+				break;
+				
+			case LOGOUT_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_LOGOUT_ARGS, STATIC_STRING_LEN(ERROR_LOGOUT_ARGS));
 				break;
 			
 			case NO_MATCH:
