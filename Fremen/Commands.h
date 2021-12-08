@@ -4,6 +4,7 @@
 
 typedef enum {
 	LOGIN,
+	LOGIN_INVALID,
 	LOGOUT,
 	SEARCH,
 	PHOTO,

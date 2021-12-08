@@ -128,6 +128,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(LOGIN, &output);
 				break;
 				
+			case LOGIN_INVALID:
+				write(DESCRIPTOR_SCREEN, ERROR_LOGIN_ARGS, STATIC_STRING_LEN(ERROR_LOGIN_ARGS));
+				break;
+				
 			case SEARCH:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));

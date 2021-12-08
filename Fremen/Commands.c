@@ -3,7 +3,7 @@
 RegEx login_regex, logout_regex, search_regex, photo_regex, send_regex;
 
 void initCommands() {
-	login_regex = regExInit("^LOGIN\\s+(\\S{1,230})\\s+(" REGEX_INTEGER ")$", true); // 230 son els màxims caracters com a usuari que el protocol establert pot suportar
+	login_regex = regExInit("^LOGIN\\s*(\\S{1,230})?\\s*(" REGEX_INTEGER ")?(.*)$", true); // 230 son els màxims caracters com a usuari que el protocol establert pot suportar
 	logout_regex = regExInit("^LOGOUT$", true);
 	search_regex = regExInit("^SEARCH\\s+(" REGEX_INTEGER ")$", true);
 	photo_regex = regExInit("^PHOTO\\s+(" REGEX_INTEGER ")$", true);
@@ -18,7 +18,14 @@ CommandResult searchCommand(char *input, char ***output) {
 		regExSearchFree(&login_regex, output);
 		return ERROR;
 	}
-	else if (r == EXIT_SUCCESS) return LOGIN;
+	else if (r == EXIT_SUCCESS) {
+		if (*(*output)[0] == '\0' || *(*output)[1] == '\0' || *(*output)[2] != '\0') {
+			regExSearchFree(&login_regex, output);
+			return LOGIN_INVALID;
+		}
+		
+		return LOGIN;
+	}
 	
 	r = regExSearch(&search_regex, input, output);
 	if (r == MALLOC_ERROR) {
