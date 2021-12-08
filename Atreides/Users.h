@@ -12,8 +12,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include "ConfigReader.h" // readUntil/readInteger
-#include "Comunication.h" // SearchResults
+#include <pthread.h>		// pthread_mutex_lock/pthread_mutex_unlock
+#include "ConfigReader.h"	// readUntil/readInteger
+#include "Comunication.h"	// SearchResults
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 

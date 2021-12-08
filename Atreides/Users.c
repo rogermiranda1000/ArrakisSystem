@@ -91,6 +91,7 @@ int saveUsersFile(char *path) {
 	
 	pthread_mutex_lock(&users_lock);
 	write(file, entry, concat(&entry, "%d\n", (int)usuaris.len));
+	free(entry);
 	
 	for (size_t x = 0; x < usuaris.len; x++) {
 		write(file, entry, concat(&entry, "%s,%d\n", usuaris.users[x].login, usuaris.users[x].postal));
@@ -100,8 +101,8 @@ int saveUsersFile(char *path) {
 	emptyUsers(); // allibera memoria
 	pthread_mutex_unlock(&users_lock);
 	
-	free(entry);
     close(file);
+	pthread_mutex_destroy(&users_lock);
 	
 	return 0;
 }
@@ -122,7 +123,7 @@ int searchUserByName(char *login) {
 int newLogin(char *login, char *postal) {
 	pthread_mutex_lock(&users_lock);
     int r = searchUserByName(login);
-	if (r == -1) return addEntry(login, postal); // no existeix -> afegir
+	if (r == -1) r = addEntry(login, postal); // no existeix -> afegir
 	pthread_mutex_unlock(&users_lock);
 	
 	// exiteix
