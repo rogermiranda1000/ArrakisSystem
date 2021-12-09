@@ -21,11 +21,13 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 void sendPhoto(int socket, char *photoName, int photoFd) {
 	char *data;
 	Communication msg;
-	char* fileSize;
+	char *fileSize;
+	int fileBytes;
 
 	// Mida del fitxer
 	fseek(photoFd, 0L, SEEK_END);
-	concat(&fileSize, "%d", ftell(photoFd));
+	fileBytes = ftell(photoFd)
+	concat(&fileSize, "%d", fileBytes);
 
 	// Creem la comanda del hash
 	char *md5sum = (char *)malloc(sizeof(char)*32);
@@ -43,6 +45,7 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
 	staticLenghtCopy(msg.data, data, DATA_LEN);
 
+	// Enviem la trama inicial
 	write(socket, &msg, sizeof(Comunication));
 
 	free(data);
@@ -50,6 +53,10 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	free(md5sum);
 	free(command);
 	
+	// Enviem les dades
+	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
+		
+	}
 }
 
 void sendLogin(int socket, char *name, char *postal) {
