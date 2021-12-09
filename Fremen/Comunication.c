@@ -54,8 +54,10 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	free(command);
 	
 	// Enviem les dades
+	msg.type = 'D';
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
-		
+		read(photoFd, msg.data, sizeof(char)*DATA_LEN);
+		write(socket, &msg, sizeof(Comunication));
 	}
 }
 
