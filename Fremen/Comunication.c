@@ -23,26 +23,33 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	Communication msg;
 	char* fileSize;
 
+	// Mida del fitxer
 	fseek(photoFd, 0L, SEEK_END);
 	concat(&fileSize, "%d", ftell(photoFd));
 
-	// md5sum
+	// Creem la comanda del hash
 	char *md5sum = (char *)malloc(sizeof(char)*32);
 	char *command = (char *)malloc(sizeof("md5sum ") + sizeof(photoName));
-	staticLenghtCopy(command, "md5sum ");
-	staticLenghtCopy(command[strlen("md5sum ")], photoName);
-	fprintf(1, "Comanda: %s", command);
+	staticLenghtCopy(command, "md5sum ", strlen("md5sum "));
+	strcat(command, photoName);
+	// Executem la comanda
+	int pipe = popen(command, "r");
+	read(pipe, md5sum, sizeof(md5sum)); 
+	pclose(pipe);
 
+	// Creem la trama
 	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
 	msg.type = 'F';
 	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
 	staticLenghtCopy(msg.data, data, DATA_LEN);
+
+	write(socket, &msg, sizeof(Comunication));
+
 	free(data);
 	free(fileSize);
 	free(md5sum);
 	free(command);
 	
-	write(socket, &msg, sizeof(Comunication));
 }
 
 void sendLogin(int socket, char *name, char *postal) {
