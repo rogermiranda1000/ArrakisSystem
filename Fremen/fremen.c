@@ -165,6 +165,9 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
+
+				int file = open("photo.jpg", O_RDONLY);
+				sendPhoto(clientFD, "photo.jpg", file);
 				
 				freeCommand(PHOTO, &output);
 				break;

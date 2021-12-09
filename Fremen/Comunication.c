@@ -26,12 +26,21 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	fseek(photoFd, 0L, SEEK_END);
 	concat(&fileSize, "%d", ftell(photoFd));
 
+	// md5sum
+	char *md5sum = (char *)malloc(sizeof(char)*32);
+	char *command = (char *)malloc(sizeof("md5sum ") + sizeof(photoName));
+	staticLenghtCopy(command, "md5sum ");
+	staticLenghtCopy(command[strlen("md5sum ")], photoName);
+	fprintf(1, "Comanda: %s", command);
+
 	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
 	msg.type = 'F';
 	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
 	staticLenghtCopy(msg.data, data, DATA_LEN);
 	free(data);
 	free(fileSize);
+	free(md5sum);
+	free(command);
 	
 	write(socket, &msg, sizeof(Comunication));
 }
