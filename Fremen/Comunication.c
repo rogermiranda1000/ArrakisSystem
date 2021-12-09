@@ -18,12 +18,13 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 	}
 }
 
-void sendPhoto(int socket, char *photoName, int photoFd) {
+void sendPhoto(int socket, char *photoName) {
 	char *data;
 	Communication msg;
 	char *fileSize;
 	int fileBytes;
 
+	int photoFd = open(photoName);
 	// Mida del fitxer
 	fseek(photoFd, 0L, SEEK_END);
 	fileBytes = ftell(photoFd)
@@ -54,11 +55,14 @@ void sendPhoto(int socket, char *photoName, int photoFd) {
 	free(command);
 	
 	// Enviem les dades
-	msg.type = 'D';
+	Communication msgData;
+	staticLenghtCopy(msgData.name, "FREMEN", COMUNICATION_NAME_LEN);
+	msgData.type = 'D';
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
-		read(photoFd, msg.data, sizeof(char)*DATA_LEN);
+		read(photoFd, msgData.data, sizeof(char)*DATA_LEN);
 		write(socket, &msg, sizeof(Comunication));
 	}
+	close(photoFd);
 }
 
 void sendLogin(int socket, char *name, char *postal) {
