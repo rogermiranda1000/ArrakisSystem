@@ -4,6 +4,7 @@
 #include <stdbool.h>	// bool/true/false
 #include <stdio.h>		// snprintf
 #include <stdlib.h>		// malloc/free
+#include <fcntl.h>		// O_RDONLY
 #include "RegExSearcher.h"
 
 #define COMUNICATION_NAME_LEN 	15

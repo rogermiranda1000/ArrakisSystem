@@ -20,13 +20,13 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 
 void sendPhoto(int socket, char *photoName) {
 	char *data;
-	Communication msg;
+	Comunication msg;
 	char *fileSize;
 	int fileBytes;
 
-	int photoFd = open(photoName);
+	int photoFd = open(photoName, O_RDONLY);
 	// Mida del fitxer
-	fseek(photoFd, 0L, SEEK_END);
+	fseek(photoFd, 0, SEEK_END);
 	fileBytes = ftell(photoFd)
 	concat(&fileSize, "%d", fileBytes);
 
@@ -55,7 +55,7 @@ void sendPhoto(int socket, char *photoName) {
 	free(command);
 	
 	// Enviem les dades
-	Communication msgData;
+	Comunication msgData;
 	staticLenghtCopy(msgData.name, "FREMEN", COMUNICATION_NAME_LEN);
 	msgData.type = 'D';
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
