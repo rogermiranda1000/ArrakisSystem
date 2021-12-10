@@ -26,9 +26,9 @@ void sendPhoto(int socket, char *photoName) {
 
 	int photoFd = open(photoName, O_RDONLY);
 	// Mida del fitxer
-	fseek(photoFd, 0, SEEK_END);
-	fileBytes = ftell(photoFd)
+	fileBytes = lseek(photoFd, 0, SEEK_END);
 	concat(&fileSize, "%d", fileBytes);
+	lseek(photoFd, 0, SEEK_SET);
 
 	// Creem la comanda del hash
 	char *md5sum = (char *)malloc(sizeof(char)*32);
