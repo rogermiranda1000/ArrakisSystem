@@ -64,9 +64,11 @@ MsgType getMsg(int socket, Comunication *data);
  * Envia login
  * @param socket 	Socket de comunicació amb Atreides
  * @param photoName Ruta de la foto
+ * @param photoFD 	FileDescriptor de la imatge
+ *					/!\ Ha de ser vàl·lid /!\
  * @param md5sum 	Suma md5 del fitxer
  */
-void sendPhoto(int socket, char *photoName, char *md5sum);
+void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum);
 
 /**
  * Fremen -> Atreides

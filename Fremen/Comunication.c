@@ -18,17 +18,16 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 	}
 }
 
-void sendPhoto(int socket, char *photoName, char *md5sum) {
+void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum) {
 	char *data;
 	Comunication msg;
 	char *fileSize;
 	int fileBytes;
-
-	int photoFd = open(photoName, O_RDONLY);
+	
 	// Mida del fitxer
-	fileBytes = lseek(photoFd, 0, SEEK_END);
+	fileBytes = lseek(photoFD, 0, SEEK_END);
 	concat(&fileSize, "%d", fileBytes);
-	lseek(photoFd, 0, SEEK_SET);
+	lseek(photoFD, 0, SEEK_SET);
 
 	// Creem la trama
 	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
@@ -43,14 +42,12 @@ void sendPhoto(int socket, char *photoName, char *md5sum) {
 	free(fileSize);
 	
 	// Enviem les dades
-	Comunication msgData;
-	staticLenghtCopy(msgData.name, "FREMEN", COMUNICATION_NAME_LEN);
-	msgData.type = 'D';
+	msg.type = 'D';
+	lseek(photoFD, 0, SEEK_SET);
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
-		read(photoFd, msgData.data, sizeof(char)*DATA_LEN);
+		read(photoFD, msg.data, DATA_LEN);
 		write(socket, &msg, sizeof(Comunication));
 	}
-	close(photoFd);
 }
 
 void sendLogin(int socket, char *name, char *postal) {

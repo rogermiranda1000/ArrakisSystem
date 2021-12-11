@@ -14,9 +14,10 @@
 
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-#define MSG_INIT		"Benvingut a Fremen\n"
-#define MSG_LOGOUT		"Tancant Fremen...\n"
-#define MSG_CONNECTED	"Ara estàs connectat a Atreides.\n"
+#define MSG_INIT				"Benvingut a Fremen\n"
+#define MSG_LOGOUT				"Tancant Fremen...\n"
+#define MSG_CONNECTED			"Ara estàs connectat a Atreides.\n"
+#define MSG_SEND_PHOTO_OK		"Foto enviada amb èxit a Atreides.\n"
 
 #define ERROR_FILE 				"Error al llegir el fitxer de configuració\n"
 #define ERROR_ARGS 				"Has d'indicar el nom del fitxer de configuració\n"
@@ -32,6 +33,7 @@
 #define ERROR_SOCKET			"Error al crear el socket\n"
 #define ERROR_COMUNICATION		"S'esperava un altre resposta per part d'Atreides\n"
 #define ERROR_ID_ASSIGNMENT		"Atreides ha retornat una ID invàl·lida\n"
+#define ERROR_NO_FILE			"El fitxer no existeix\n"
 
 #define WARNING_LOST_CONNECTION	"Atreides s'ha desconectat\n"
 

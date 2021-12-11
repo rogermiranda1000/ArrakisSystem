@@ -81,8 +81,8 @@ int main(int argc, char *argv[], char *envp[]) {
 			 * -- Fremen -> Atreides --
 			 * C|<nom>*<codi>\n -> login <nom> <codi>
 			 * s|<codi>\n -> search <codi>
-			 * [x] n|<file>\n -> send <file>
-			 * [x] p|<id>\n -> photo <id>
+			 * n|<file>\n -> send <file>
+			 * p|<id>\n -> photo <id>
 			 * Q|\n -> logout
 			 *
 			 * -- Atreides -> Fremen --
@@ -188,6 +188,13 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 
+				int photoFd;
+				if ((photoFd = open(output[0], O_RDONLY)) < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+					freeCommand(SEND, &output);
+					break;
+				}
+				
 				// md5sum command
 				ForkedPipeInfo fork_pipe;
 				char *command = (char*)malloc(sizeof(char) * (STATIC_STRING_LEN("md5sum ") + strlen(output[0])));
@@ -197,12 +204,16 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				executeProgramLineWithPipe(&fork_pipe, &command, envp, &terminate);
 				char *md5sum;
-				readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna la suma md5 seguida de ' *<nom fitxer>'
-				sendPhoto(clientFD, output[0], md5sum);
+				readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna '<md5> *<nom fitxer>'
+				sendPhoto(clientFD, output[0], photoFd, md5sum);
 				free(md5sum);
+				
+				// TODO obtenir sortida d'Atreides
+				write(DESCRIPTOR_ERROR, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
 				
 				freeForkedPipeInfo(&fork_pipe);
 				freeCommand(SEND, &output);
+				close(photoFd);
 				break;
 				
 			case SEND_INVALID:
