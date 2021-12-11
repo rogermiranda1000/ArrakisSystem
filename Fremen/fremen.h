@@ -18,10 +18,15 @@
 #define MSG_LOGOUT		"Tancant Fremen...\n"
 #define MSG_CONNECTED	"Ara estàs connectat a Atreides.\n"
 
-#define ERROR_FILE 		"Error al llegir el fitxer de configuració\n"
-#define ERROR_ARGS 		"Has d'indicar el nom del fitxer de configuració\n"
-#define ERROR_MALLOC 	"Malloc error, torna a intentar-ho quan Matagalls no estigui tant saturat\n"
-#define ERROR_EXECUTE	"Error en executar la comanda\n"
+#define ERROR_FILE 				"Error al llegir el fitxer de configuració\n"
+#define ERROR_ARGS 				"Has d'indicar el nom del fitxer de configuració\n"
+#define ERROR_LOGIN_ARGS		"La comanda login s'executa de la següent forma: 'LOGIN <usuari> <codi postal>'\n"
+#define ERROR_LOGOUT_ARGS		"La comanda logout s'executa de la següent forma: 'LOGOUT'\n"
+#define ERROR_SEARCH_ARGS		"La comanda search s'executa de la següent forma: 'SEARCH <codi postal>'\n"
+#define ERROR_PHOTO_ARGS		"La comanda photo s'executa de la següent forma: 'PHOTO <id>'\n"
+#define ERROR_SEND_ARGS			"La comanda send s'executa de la següent forma: 'SEND <archiu>'\n"
+#define ERROR_MALLOC 			"Malloc error, torna a intentar-ho quan Matagalls no estigui tant saturat\n"
+#define ERROR_EXECUTE			"Error en executar la comanda\n"
 #define ERROR_ALREADY_LOGGED	"Ja estas conectat a Atreides!\n"
 #define ERROR_NO_CONNECTION		"No estas conectat a Atreides\n"
 #define ERROR_SOCKET			"Error al crear el socket\n"
@@ -45,5 +50,10 @@ void ctrlCHandler();
 
 /**
  * Allibera tota memoria global reservada, donant abans un missatge informatiu
+ */
+void secureTermination();
+
+/**
+ * Allibera tota memoria global reservada
  */
 void terminate();

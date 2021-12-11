@@ -22,7 +22,7 @@ char *name;
 
 void ctrlCHandler() {
 	if (current_status == WAITING) {
-		terminate();
+		secureTermination();
 		
 		signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 		raise(SIGINT);
@@ -128,6 +128,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(LOGIN, &output);
 				break;
 				
+			case LOGIN_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_LOGIN_ARGS, STATIC_STRING_LEN(ERROR_LOGIN_ARGS));
+				break;
+				
 			case SEARCH:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
@@ -156,6 +160,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(SEARCH, &output);
 				break;
 				
+			case SEARCH_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_SEARCH_ARGS, STATIC_STRING_LEN(ERROR_SEARCH_ARGS));
+				break;
+				
 			case PHOTO:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
@@ -171,6 +179,10 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(PHOTO, &output);
 				break;
 				
+			case PHOTO_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_PHOTO_ARGS, STATIC_STRING_LEN(ERROR_PHOTO_ARGS));
+				break;
+				
 			case SEND:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
@@ -183,15 +195,23 @@ int main(int argc, char *argv[], char *envp[]) {
 				freeCommand(SEND, &output);
 				break;
 				
+			case SEND_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_SEND_ARGS, STATIC_STRING_LEN(ERROR_SEND_ARGS));
+				break;
+				
 			case LOGOUT:
 				current_status = EXIT;
 				// el socket es tanca a terminate()
 				
 				// logout no té arguments -> no cal free
 				break;
+				
+			case LOGOUT_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_LOGOUT_ARGS, STATIC_STRING_LEN(ERROR_LOGOUT_ARGS));
+				break;
 			
 			case NO_MATCH:
-				if (executeProgramLine(input, envp) != 0) write(DESCRIPTOR_ERROR, ERROR_EXECUTE, STATIC_STRING_LEN(ERROR_EXECUTE));
+				if (executeProgramLine(&input, envp, &terminate) != 0) write(DESCRIPTOR_ERROR, ERROR_EXECUTE, STATIC_STRING_LEN(ERROR_EXECUTE));
 				break;
 				
 			case ERROR:
@@ -200,18 +220,24 @@ int main(int argc, char *argv[], char *envp[]) {
 		}
 	}
 	
-	terminate();
+	secureTermination();
 	
 	return 0;
 }
 
-void terminate() {
+void secureTermination() {
 	write(DESCRIPTOR_SCREEN, MSG_LOGOUT, STATIC_STRING_LEN(MSG_LOGOUT));
 	
 	if (clientFD >= 0) {
 		sendLogout(clientFD, name, clientID);
-		close(clientFD);
+		// el socket es tanca a terminate()
 	}
+	
+	terminate();
+}
+
+void terminate() {
+	if (clientFD >= 0) close(clientFD);
 	
 	freeCommands();
 	

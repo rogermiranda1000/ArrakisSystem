@@ -4,6 +4,11 @@
 #define INIT_FILE "0\n"
 
 /**
+ * Asegura que només 1 està accedint a usuaris
+ */
+pthread_mutex_t users_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/**
  * Llista d'usuaris
  */
 Users usuaris = {NULL, 0};
@@ -66,6 +71,7 @@ int loadUsersFile(char *path) {
             return -2;
         }
 		
+		// no cal protegir (en el moment que es fa loadUsersFile() no hi ha cap thread creat)
 		addEntry(userFound, postalFound);
 		
 		free(userFound);
@@ -82,6 +88,8 @@ int saveUsersFile(char *path) {
 	if (file < 0) return file;
 	
 	char *entry;
+	
+	pthread_mutex_lock(&users_lock);
 	write(file, entry, concat(&entry, "%d\n", (int)usuaris.len));
 	free(entry);
 	
@@ -90,8 +98,12 @@ int saveUsersFile(char *path) {
 		free(entry);
 	}
 	
-    close(file);
 	emptyUsers(); // allibera memoria
+	pthread_mutex_unlock(&users_lock);
+	
+    close(file);
+	pthread_mutex_destroy(&users_lock);
+	
 	return 0;
 }
 
@@ -109,9 +121,10 @@ int searchUserByName(char *login) {
 }
 
 int newLogin(char *login, char *postal) {
+	pthread_mutex_lock(&users_lock);
     int r = searchUserByName(login);
-	
-	if (r == -1) return addEntry(login, postal); // no existeix -> afegir
+	if (r == -1) r = addEntry(login, postal); // no existeix -> afegir
+	pthread_mutex_unlock(&users_lock);
 	
 	// exiteix
 	usuaris.users[r].postal = atoi(postal); // per si de cas ha cambiat de regió
@@ -119,16 +132,24 @@ int newLogin(char *login, char *postal) {
 }
 
 User getUser(int id) {
-	return usuaris.users[id];
+	pthread_mutex_lock(&users_lock);
+	User r = usuaris.users[id];
+	pthread_mutex_unlock(&users_lock);
+	
+	return r;
 }
 
 SearchResults getUsersByPostal(int postal) {
 	SearchResults r = (SearchResults){NULL, 0};
+	
+	pthread_mutex_lock(&users_lock);
 	for (size_t x = 0; x < usuaris.len; x++) {
 		if (usuaris.users[x].postal != postal) continue;
 		r.results = (SearchResult*)realloc(r.results, sizeof(SearchResult)*(++r.size));
 		r.results[r.size-1] = (SearchResult){(char*)malloc(sizeof(char)*(1+strlen(usuaris.users[x].login))), x};
 		strcpy(r.results[r.size-1].name, usuaris.users[x].login);
 	}
+	pthread_mutex_unlock(&users_lock);
+	
 	return r;
 }
