@@ -4,7 +4,7 @@
 #define DESCRIPTOR_ERROR 2
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-char *ip = NULL, *users_file_path = NULL;
+char *ip = NULL, *users_file_path = NULL, *directory = NULL;
 int socketFD;
 
 // TODO player FD
@@ -45,21 +45,30 @@ void ctrlCHandler() {
 
 	free(ip);
 	free(users_file_path);
-	
+	free(directory);
 	
 	signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 	raise(SIGINT);
 }
+
+typedef struct {
+	int clientFD;
+	char **envp;
+} ThreadInfo;
 
 /**
  * Allibera tots els recursos de manageThread()
  * @param arg	Informació necesaria per alliberar els recursos
  */
 static void freeThread(void *arg) {
-	int clientFD = *((int*)arg);
+	int clientFD = ((ThreadInfo*)arg)->clientFD;
 	free(arg);
 	
 	close(clientFD);
+}
+
+void todoFree() {
+	
 }
 
 /**
@@ -79,7 +88,7 @@ static void *manageThread(void *arg) {
 	 * O|<id>\n -> login efectuat correctament
 	 **/
 	
-	int clientFD = *((int*)arg);
+	int clientFD = ((ThreadInfo*)arg)->clientFD;
 	// el free es fa a freeThread
 	pthread_cleanup_push(freeThread, arg);
 	
@@ -149,6 +158,12 @@ static void *manageThread(void *arg) {
 				
 				break;
 				
+			case PROTOCOL_SEND:
+				getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &todoFree, &data);
+				// TODO check if ok
+				// TODO send rersponse
+				break;
+				
 			case PROTOCOL_LOGOUT:
 				if (user_id == -1) break;
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
@@ -169,7 +184,7 @@ static void *manageThread(void *arg) {
 	return NULL;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
 	struct sockaddr_in servidor;
 	unsigned short port;
 	
@@ -181,15 +196,13 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	
-	char *directory = NULL;
 	if (readConfig(argv[1], &ip, &port, &directory) == -1) {
 		write(DESCRIPTOR_ERROR, ERROR_CONFIG_FILE, STATIC_STRING_LEN(ERROR_CONFIG_FILE));
 		free(ip);
 		free(directory);
 		exit(EXIT_FAILURE);
 	}
-	concat(&users_file_path, ".%s/%s", directory, USERS_FILE);
-	free(directory);
+	concat(&users_file_path, "%s/%s", directory, USERS_FILE);
 	
 	loadUsersFile(users_file_path);
 	
@@ -218,9 +231,10 @@ int main(int argc, char *argv[]) {
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
+		ThreadInfo info = (ThreadInfo){clientFD, envp};
 		
 		// Creació del thread
-		if (createThread(&manageThread, &clientFD, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
+		if (createThread(&manageThread, &info, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
 	}

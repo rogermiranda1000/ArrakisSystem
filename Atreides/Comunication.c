@@ -1,5 +1,9 @@
 #include "Comunication.h"
 
+#define DESCRIPTOR_SCREEN 1
+#define DESCRIPTOR_ERROR 2
+#define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
+
 /**
  * Donada una mida i dos Strings, les copia
  * /!\ origen ha de cabre a desti /!\
@@ -16,18 +20,6 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 			origen_ended = (origen[x] == '\0');
 		}
 	}
-}
-
-void sendLogin(int socket, char *name, char *postal) {
-	char *data;
-	Comunication trama;
-	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
-	trama.type = 'C';
-	concat(&data, "%s*%s", name, postal);
-	staticLenghtCopy(trama.data, data, DATA_LEN);
-	free(data);
-	
-	write(socket, &trama, sizeof(Comunication));
 }
 
 MsgType getMsg(int socket, Comunication *data) {
@@ -50,9 +42,33 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'Q':
 			return PROTOCOL_LOGOUT;
 			
+		case 'F':
+			return PROTOCOL_SEND;
+			
+		case 'D':
+			return PROTOCOL_SEND_DATA;
+			
+		case 'I':
+		case 'R':
+			return PROTOCOL_SEND_RESPONSE;
+			
+		// TODO photo
+			
 		default:
 			return PROTOCOL_UNKNOWN;
 	}
+}
+
+void sendLogin(int socket, char *name, char *postal) {
+	char *data;
+	Comunication trama;
+	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
+	trama.type = 'C';
+	concat(&data, "%s*%s", name, postal);
+	staticLenghtCopy(trama.data, data, DATA_LEN);
+	free(data);
+	
+	write(socket, &trama, sizeof(Comunication));
 }
 
 int getLoginResponse(Comunication *data) {
@@ -214,4 +230,102 @@ void freeSearchResponse(SearchResults *data) {
 	
 	data->results = NULL;
 	data->size = 0;
+}
+
+void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum) {
+	char *data;
+	Comunication msg;
+	char *fileSize;
+	int fileBytes;
+	
+	// Mida del fitxer
+	fileBytes = lseek(photoFD, 0, SEEK_END);
+	concat(&fileSize, "%d", fileBytes);
+	lseek(photoFD, 0, SEEK_SET);
+
+	// Creem la trama
+	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
+	msg.type = 'F';
+	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
+	staticLenghtCopy(msg.data, data, DATA_LEN);
+
+	// Enviem la trama inicial
+	write(socket, &msg, sizeof(Comunication));
+
+	free(data);
+	free(fileSize);
+	
+	// Enviem les dades
+	msg.type = 'D';
+	lseek(photoFD, 0, SEEK_SET);
+	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
+		read(photoFD, msg.data, DATA_LEN);
+		write(socket, &msg, sizeof(Comunication));
+	}
+}
+
+int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data) {
+	char *ptr = data->data, *md5;
+	size_t file_size = 0;
+	MsgType msg;
+	Comunication extra_data;
+	int photo_fd;
+	
+	// nom de la imatge (només ens és rellevant el '.X')
+	char *type = NULL;
+	while (*ptr != '*') {
+		if (*ptr == '.') type = ptr+1;
+		ptr++;
+	}
+	*ptr = '\0'; // per la lectura de després
+	ptr++; // elimina el '*'
+	
+	// creem el FD
+	char *path_name, *file_name;
+	if (type == NULL) concat(&file_name, "%d", user_id); // no té tipus
+	else concat(&file_name, "%d.%s", user_id, type);
+	concat(&path_name, "%s/%s", img_folder_path, file_name);
+	if ((photo_fd = open(path_name, O_WRONLY | O_CREAT, 00666)) < 0) return -1;
+	
+	char *buffer;
+	write(DESCRIPTOR_SCREEN, buffer, concat(&buffer, "Guardada com %s\n", file_name));
+	free(buffer);
+	free(file_name);
+	
+	// seguim tractant la trama original
+	while (*ptr != '*') {
+		file_size *= 10;
+		file_size += *ptr - '0';
+		ptr++;
+	}
+	ptr++; // elimina el '*'
+	
+	md5 = ptr;
+	
+	while (file_size > 0) {
+		msg = getMsg(socket, &extra_data);
+		if (msg != PROTOCOL_SEND_DATA) return -2;
+		write(photo_fd, extra_data.data, (file_size > DATA_LEN) ? DATA_LEN : file_size);
+		
+		if (file_size > DATA_LEN) file_size -= DATA_LEN;
+		else file_size = 0;
+	}
+	
+	close(photo_fd);
+	
+	// md5sum command
+	ForkedPipeInfo fork_pipe;
+	char *command = (char*)malloc(sizeof(char) * (1 + STATIC_STRING_LEN("md5sum ") + strlen(path_name)));
+	strcpy(command, "md5sum ");
+	strcat(command, path_name);
+	free(path_name);
+	// el free es fa a executeProgramLineWithPipe()
+	
+	executeProgramLineWithPipe(&fork_pipe, &command, envp, freeMallocs);
+	char *md5sum;
+	readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna '<md5> *<nom fitxer>'
+	int r = (strcmp(md5sum, md5) != 0);
+	free(md5sum);
+	
+	return r;
 }

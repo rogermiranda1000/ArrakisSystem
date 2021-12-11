@@ -197,7 +197,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				// md5sum command
 				ForkedPipeInfo fork_pipe;
-				char *command = (char*)malloc(sizeof(char) * (STATIC_STRING_LEN("md5sum ") + strlen(output[0])));
+				char *command = (char*)malloc(sizeof(char) * (1 + STATIC_STRING_LEN("md5sum ") + strlen(output[0])));
 				strcpy(command, "md5sum ");
 				strcat(command, output[0]);
 				// el free es fa a executeProgramLineWithPipe()

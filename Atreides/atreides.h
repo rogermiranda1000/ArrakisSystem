@@ -34,4 +34,4 @@
 
 #define USERS_FILE				"registeredUsers.txt"
 
-int main(int argc, char *argv[]);
+int main(int argc, char *argv[], char *envp[]);

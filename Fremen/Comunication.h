@@ -6,6 +6,8 @@
 #include <stdlib.h>		// malloc/free
 #include <fcntl.h>		// O_RDONLY
 #include "RegExSearcher.h"
+#include "ProgramLauncher.h"
+#include "ConfigReader.h" // readUntil
 
 #define COMUNICATION_NAME_LEN 	15
 #define DATA_LEN				240
@@ -36,7 +38,10 @@ typedef enum {
 	PROTOCOL_LOGOUT,			// Fremen fa logout d'Atreides
 	PROTOCOL_SEARCH,			// Fremen solicita una busqueda
 	PROTOCOL_SEARCH_RESPONSE,	// Atreides respon a Fremen sobre la busqueda
-	// TODO altres
+	PROTOCOL_SEND,
+	PROTOCOL_SEND_RESPONSE,
+	PROTOCOL_PHOTO,
+	PROTOCOL_PHOTO_RESPONSE,
 	PROTOCOL_LOST,
 	PROTOCOL_UNKNOWN
 } MsgType;
@@ -58,17 +63,6 @@ typedef struct {
  * @return			Tipu de trama obtinguda
  */
 MsgType getMsg(int socket, Comunication *data);
-
-/**
- * Fremen -> Atreides
- * Envia login
- * @param socket 	Socket de comunicació amb Atreides
- * @param photoName Ruta de la foto
- * @param photoFD 	FileDescriptor de la imatge
- *					/!\ Ha de ser vàl·lid /!\
- * @param md5sum 	Suma md5 del fitxer
- */
-void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum);
 
 /**
  * Fremen -> Atreides
@@ -147,3 +141,29 @@ SearchResults getSearchResponse(int socket);
  * @param data		Contingut a alliberar
  */
 void freeSearchResponse(SearchResults *data);
+
+/**
+ * Fremen -> Atreides
+ * Envia la foto del usuari
+ * @param socket 	Socket de comunicació amb Atreides
+ * @param photoName Ruta de la foto
+ * @param photoFD 	FileDescriptor de la imatge
+ *					/!\ Ha de ser vàl·lid /!\
+ * @param md5sum 	Suma md5 del fitxer
+ */
+void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum);
+
+
+/**
+ * Obtè la foto del usuari
+ * @param socket 		Socket de comunicació amb Fremen
+ * @param user_id 		Usuari que envia la imatge
+ * @param envp 			Variables d'envirement
+ * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
+ * @param data 			Primera trama llegida
+ * @retval -1			Error obrint el fitxer
+ * @retval -2			Error en la trama
+ * @retval >0			Error en MD5
+ * @retval 0			Tot OK
+ */
+int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data);
