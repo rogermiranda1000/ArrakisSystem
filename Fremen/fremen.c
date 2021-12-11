@@ -173,8 +173,6 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
 				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
-
-				sendPhoto(clientFD, "photo.jpg", file);
 				
 				freeCommand(PHOTO, &output);
 				break;
@@ -189,9 +187,21 @@ int main(int argc, char *argv[], char *envp[]) {
 					freeCommand(SEND, &output);
 					break;
 				}
+
+				// md5sum command
+				ForkedPipeInfo fork_pipe;
+				char *command = (char*)malloc(sizeof(char) * (STATIC_STRING_LEN("md5sum ") + strlen(output[0])));
+				strcpy(command, "md5sum ");
+				strcat(command, output[0]);
+				// el free es fa a executeProgramLineWithPipe()
 				
-				// output[0]
+				executeProgramLineWithPipe(&fork_pipe, &command, envp, &terminate);
+				char *md5sum;
+				readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna la suma md5 seguida de ' *<nom fitxer>'
+				sendPhoto(clientFD, output[0], md5sum);
+				free(md5sum);
 				
+				freeForkedPipeInfo(&fork_pipe);
 				freeCommand(SEND, &output);
 				break;
 				

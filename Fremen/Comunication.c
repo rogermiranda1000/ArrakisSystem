@@ -18,7 +18,7 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 	}
 }
 
-void sendPhoto(int socket, char *photoName) {
+void sendPhoto(int socket, char *photoName, char *md5sum) {
 	char *data;
 	Comunication msg;
 	char *fileSize;
@@ -29,16 +29,6 @@ void sendPhoto(int socket, char *photoName) {
 	fileBytes = lseek(photoFd, 0, SEEK_END);
 	concat(&fileSize, "%d", fileBytes);
 	lseek(photoFd, 0, SEEK_SET);
-
-	// Creem la comanda del hash
-	char *md5sum = (char *)malloc(sizeof(char)*32);
-	char *command = (char *)malloc(sizeof("md5sum ") + sizeof(photoName));
-	staticLenghtCopy(command, "md5sum ", strlen("md5sum "));
-	strcat(command, photoName);
-	// Executem la comanda
-	int pipe = popen(command, "r");
-	read(pipe, md5sum, sizeof(md5sum)); 
-	pclose(pipe);
 
 	// Creem la trama
 	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
@@ -51,8 +41,6 @@ void sendPhoto(int socket, char *photoName) {
 
 	free(data);
 	free(fileSize);
-	free(md5sum);
-	free(command);
 	
 	// Enviem les dades
 	Comunication msgData;
