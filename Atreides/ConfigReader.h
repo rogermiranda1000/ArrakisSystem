@@ -3,7 +3,8 @@
 #include <unistd.h>
 #include <fcntl.h>		// O_RDONLY
 #include <stdlib.h>		// realloc
-#include <stdbool.h>
+#include <stdbool.h>	// bool
+#include <string.h>		// strlen
 
 #define DESCRIPTOR_SCREEN 1
 #define DESCRIPTOR_ERROR 2

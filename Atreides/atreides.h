@@ -23,6 +23,7 @@
 #define ERROR_LISTEN			"Error haciendo el listen\n"
 #define ERROR_THREAD			"Error creando thread\n"
 #define ERROR_PROTOCOL			"Error: no s'esperaba aquesta trama\n"
+#define ERROR_MD5				"Error en la suma md5\n"
 
 #define INFO_START				"SERVIDOR ATREIDES\n"
 #define INFO_READ_FILE			"Llegit el fitxer de configuració\n"
@@ -34,4 +35,4 @@
 
 #define USERS_FILE				"registeredUsers.txt"
 
-int main(int argc, char *argv[]);
+int main(int argc, char *argv[], char *envp[]);

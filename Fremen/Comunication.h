@@ -1,10 +1,13 @@
 #pragma once
 
 #include <unistd.h>
-#include <stdbool.h>	// bool/true/false
-#include <stdio.h>		// snprintf
-#include <stdlib.h>		// malloc/free
+#include <stdbool.h>			// bool/true/false
+#include <stdio.h>				// snprintf
+#include <stdlib.h>				// malloc/free
+#include <fcntl.h>				// O_RDONLY
 #include "RegExSearcher.h"
+#include "ProgramLauncher.h"	// executeProgramLineWithPipe
+#include "ConfigReader.h" 		// readUntil
 
 #define COMUNICATION_NAME_LEN 	15
 #define DATA_LEN				240
@@ -35,7 +38,9 @@ typedef enum {
 	PROTOCOL_LOGOUT,			// Fremen fa logout d'Atreides
 	PROTOCOL_SEARCH,			// Fremen solicita una busqueda
 	PROTOCOL_SEARCH_RESPONSE,	// Atreides respon a Fremen sobre la busqueda
-	// TODO altres
+	PROTOCOL_SEND,
+	PROTOCOL_SEND_RESPONSE,		// send & photo response
+	PROTOCOL_PHOTO,
 	PROTOCOL_LOST,
 	PROTOCOL_UNKNOWN
 } MsgType;
@@ -100,10 +105,8 @@ void sendLogout(int socket, char *name, int id);
  * @param name 		Nom del usuari
  * @param id		ID del usuari
  * @param postal	Codi postal a cercar
- * @retval true		Tot OK
- * @retval false	Error al enviar pel socket
  */
-bool sendSearch(int socket, char *name, int id, char *postal);
+void sendSearch(int socket, char *name, int id, char *postal);
 
 /**
  * Obtè la sol·licitud de cerca
@@ -135,3 +138,58 @@ SearchResults getSearchResponse(int socket);
  * @param data		Contingut a alliberar
  */
 void freeSearchResponse(SearchResults *data);
+
+/**
+ * Fremen -> Atreides o Atreides -> Fremen
+ * Envia la foto del usuari
+ * @param socket 	Socket de comunicació
+ * @param origin	FREMEN/ATREIDES
+ * @param photo_name Nom de la foto
+ * @param photo_path Ruta de la foto
+ * @param envp 			Variables d'envirement
+ * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
+ * @retval 0		Tot OK
+ * @retval -1		El fitxer no existeix
+ * @retval -2		SIGPIPE
+ */
+int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char *envp[], void (*freeMallocs)());
+
+/**
+ * Atreides -> Fremen
+ * La foto solicitada no existeix
+ * @param socket 	Socket de comunicació amb Fremen
+ */
+void sendNoPhoto(int socket);
+
+/**
+ * Obtè la foto del usuari
+ * @param socket 		Socket de comunicació amb Fremen
+ * @param user_id 		Usuari que envia la imatge
+ * @param envp 			Variables d'envirement
+ * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
+ * @param data 			Primera trama llegida
+ * @param original_image_name 	Punter a on guardar el nom de la imatge (no cal fer free; apunta a data). NULL si no es vol guardar
+ * @param final_image_name 		char[] on guardar el nom final de la imatge (no pot ser dinamic). NULL si no es vol guardar
+ * @retval -1			Error obrint el fitxer
+ * @retval -2			Error en la trama
+ * @retval >0			Error en MD5
+ * @retval 0			Tot OK
+ */
+int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data, char **original_image_name, char *final_image_name);
+
+/**
+ * Fremen -> Atreides o Atreides -> Fremen
+ * Retorna la informació corresponent a la imatge
+ * @param socket	Socket de comunicació
+ * @param origin	FREMEN/ATREIDES
+ * @param ok		1 si tot ok, 0 si algun error
+ */
+void sendPhotoResponse(int socket, char *origin, bool ok);
+
+/**
+ * Fremen -> Atreides
+ * Soliciata la imatge d'un usuari
+ * @param socket	Socket de comunicació amb Atreides
+ * @param id		ID del usuari a obtenir la imatge
+ */
+void requestPhoto(int socket, char *id);

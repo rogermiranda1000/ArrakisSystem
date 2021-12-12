@@ -67,5 +67,15 @@ int readConfig(char* name, unsigned int* timeClean, char** ip, unsigned short* p
 	*port = readInteger(file, NULL);
 	readUntil(file, directory, '\n');
 	close(file);
+	
+	// directory és path relatiu, establert com absolut
+	if (**directory == '/') {
+		char *aux = (char*)malloc(sizeof(char)*(2+strlen(*directory)));
+		aux[0] = '.';
+		strcpy(&aux[1], *directory);
+		free(*directory);
+		*directory = aux;
+	}
+	
 	return 0;
 }
