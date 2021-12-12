@@ -208,8 +208,8 @@ int main(int argc, char *argv[], char *envp[]) {
 				sendPhoto(clientFD, output[0], photoFd, md5sum);
 				free(md5sum);
 				
-				// TODO obtenir sortida d'Atreides
-				write(DESCRIPTOR_ERROR, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
+				if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
+				else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 				
 				freeForkedPipeInfo(&fork_pipe);
 				freeCommand(SEND, &output);

@@ -107,6 +107,8 @@ static void *manageThread(void *arg) {
 	int search_postal;
 	SearchResults search_data;
 
+	char *tmp;
+
 	while (!exit) {
 		switch(getMsg(clientFD, &data)) {
 			case PROTOCOL_LOGIN:
@@ -164,8 +166,22 @@ static void *manageThread(void *arg) {
 				break;
 				
 			case PROTOCOL_SEND:
-				getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &terminate, &data);
-				// TODO check if ok
+				// obtenir el nom
+				tmp = data.data;
+				while (*tmp != '*') tmp++;
+				*tmp = '\0'; // per la lectura de després
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut send %s de %s %d\n", data.data, getUser(user_id).login, user_id);
+				*tmp = '*'; // restaura (per la lectura de getPhoto())
+				
+				int r = getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &terminate, &data);
+				if (r == 0) {
+					sendPhotoResponse(clientFD, true);
+				}
+				else {
+					if (r < 0) write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL)); // error en la trama
+					else write(DESCRIPTOR_ERROR, ERROR_MD5, STATIC_STRING_LEN(ERROR_MD5)); // error en l'md5
+					sendPhotoResponse(clientFD, false);
+				}
 				// TODO send rersponse
 				break;
 				

@@ -167,3 +167,9 @@ void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum);
  * @retval 0			Tot OK
  */
 int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data);
+
+/**
+ * Retorna la informació corresponent a la imatge
+ * @param ok	1 si tot ok, 0 si algun error
+ */
+void sendPhotoResponse(int socket, bool ok);

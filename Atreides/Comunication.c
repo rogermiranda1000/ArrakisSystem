@@ -328,3 +328,19 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	
 	return r;
 }
+
+void sendPhotoResponse(int socket, bool ok) {
+	Comunication msg;
+	
+	staticLenghtCopy(msg.name, "ATREIDES", COMUNICATION_NAME_LEN);
+	if (ok) {
+		msg.type = 'I';
+		staticLenghtCopy(msg.data, "IMAGE OK", DATA_LEN);
+	}
+	else {
+		msg.type = 'R';
+		staticLenghtCopy(msg.data, "IMAGE KO", DATA_LEN);
+	}
+	
+	write(socket, &msg, sizeof(Comunication));
+}
