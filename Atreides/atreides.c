@@ -167,22 +167,40 @@ static void *manageThread(void *arg) {
 				break;
 				
 			case PROTOCOL_SEND:
-				response = getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &terminate, &data, &tmp, tmp2);
+				response = getPhoto(clientFD, directory, user_id, ((ThreadInfo*)arg)->envp, &terminate, &data, &tmp, tmp2);
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut send %s de %s %d\n", tmp, getUser(user_id).login, user_id);
 				if (response == 0) {
 					susPrintF(DESCRIPTOR_SCREEN, "Guardada com %s\n", tmp2);
 					setImage(user_id, tmp2);
 					
-					sendPhotoResponse(clientFD, true);
+					sendPhotoResponse(clientFD, "ATREIDES", true);
 				}
 				else {
 					if (response < 0) write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL)); // error en la trama
 					else write(DESCRIPTOR_ERROR, ERROR_MD5, STATIC_STRING_LEN(ERROR_MD5)); // error en l'md5
 					setImage(user_id, NULL); // com hem sobreescribit la imatge, s'ha d'eliminar
 					
-					sendPhotoResponse(clientFD, false);
+					sendPhotoResponse(clientFD, "ATREIDES", false);
 				}
-				// TODO send rersponse
+				break;
+				
+			case PROTOCOL_PHOTO:
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut photo %s de %s %d\n", data.data, getUser(user_id).login, user_id);
+				
+				tmp = getUser(atoi(data.data)).image_type;
+				if (tmp != NULL && *tmp != '\0') {
+					strcat(data.data, ".");
+					strcat(data.data, tmp);
+				}
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Enviament %s\n", data.data);
+				if (tmp == NULL || sendPhoto(clientFD, "ATREIDES", data.data, directory, ((ThreadInfo*)arg)->envp, &terminate) == -1) sendNoPhoto(clientFD);
+				else {
+					// el send photo ja es fa en la comparació d'adalt
+					getMsg(clientFD, &data); // fremen envia un OK o KO
+				}
+				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+				
 				break;
 				
 			case PROTOCOL_LOGOUT:

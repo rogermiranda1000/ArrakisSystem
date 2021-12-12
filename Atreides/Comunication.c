@@ -50,7 +50,8 @@ MsgType getMsg(int socket, Comunication *data) {
 		case 'R':
 			return PROTOCOL_SEND_RESPONSE;
 			
-		// TODO photo
+		case 'P':
+			return PROTOCOL_PHOTO;
 			
 		default:
 			return PROTOCOL_UNKNOWN;
@@ -230,21 +231,43 @@ void freeSearchResponse(SearchResults *data) {
 	data->size = 0;
 }
 
-void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum) {
+int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char *envp[], void (*freeMallocs)()) {
 	char *data;
 	Comunication msg;
 	char *fileSize;
 	int fileBytes;
 	
+	int photoFD;
+	char *file_path;
+	concat(&file_path, "%s/%s", photo_path, photo_name);
+	if ((photoFD = open(file_path, O_RDONLY)) < 0) {
+		free(file_path);
+		return -1;
+	}
+	
+	// md5sum command
+	ForkedPipeInfo fork_pipe;
+	char *command = (char*)malloc(sizeof(char) * (2 + STATIC_STRING_LEN("md5sum ") + strlen(photo_path) + strlen(photo_name)));
+	strcpy(command, "md5sum ");
+	strcat(command, file_path);
+	free(file_path);
+	// el free es fa a executeProgramLineWithPipe()
+	
+	executeProgramLineWithPipe(&fork_pipe, &command, envp, freeMallocs);
+	char *md5sum;
+	readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna '<md5> *<nom fitxer>'
+	freeForkedPipeInfo(&fork_pipe);
+
 	// Mida del fitxer
 	fileBytes = lseek(photoFD, 0, SEEK_END);
 	concat(&fileSize, "%d", fileBytes);
 	lseek(photoFD, 0, SEEK_SET);
 
 	// Creem la trama
-	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
+	staticLenghtCopy(msg.name, origin, COMUNICATION_NAME_LEN);
 	msg.type = 'F';
-	concat(&data, "%s*%s*%s", photoName, fileSize, md5sum);
+	concat(&data, "%s*%s*%s", photo_name, fileSize, md5sum);
+	free(md5sum);
 	staticLenghtCopy(msg.data, data, DATA_LEN);
 
 	// Enviem la trama inicial
@@ -260,6 +283,19 @@ void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum) {
 		read(photoFD, msg.data, DATA_LEN);
 		write(socket, &msg, sizeof(Comunication));
 	}
+	
+	close(photoFD);
+	return 0;
+}
+
+void sendNoPhoto(int socket) {
+	Comunication msg;
+	
+	staticLenghtCopy(msg.name, "ATREIDES", COMUNICATION_NAME_LEN);
+	msg.type = 'F';
+	staticLenghtCopy(msg.data, "FILE NOT FOUND", DATA_LEN);
+
+	write(socket, &msg, sizeof(Comunication));
 }
 
 int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data, char **original_image_name, char *final_image_name) {
@@ -271,7 +307,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	
 	// nom de la imatge (només ens és rellevant el '.X')
 	char *type = NULL;
-	*original_image_name = ptr;
+	if (original_image_name != NULL) *original_image_name = ptr;
 	while (*ptr != '*') {
 		if (*ptr == '.') type = ptr+1;
 		ptr++;
@@ -286,7 +322,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	concat(&path_name, "%s/%s", img_folder_path, file_name);
 	if ((photo_fd = open(path_name, O_WRONLY | O_CREAT, 00666)) < 0) return -1;
 	
-	strcpy(final_image_name, file_name);
+	if (final_image_name != NULL) strcpy(final_image_name, file_name);
 	free(file_name);
 	
 	// seguim tractant la trama original
@@ -328,10 +364,10 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	return r;
 }
 
-void sendPhotoResponse(int socket, bool ok) {
+void sendPhotoResponse(int socket, char *origin, bool ok) {
 	Comunication msg;
 	
-	staticLenghtCopy(msg.name, "ATREIDES", COMUNICATION_NAME_LEN);
+	staticLenghtCopy(msg.name, origin, COMUNICATION_NAME_LEN);
 	if (ok) {
 		msg.type = 'I';
 		staticLenghtCopy(msg.data, "IMAGE OK", DATA_LEN);
@@ -341,5 +377,15 @@ void sendPhotoResponse(int socket, bool ok) {
 		staticLenghtCopy(msg.data, "IMAGE KO", DATA_LEN);
 	}
 	
+	write(socket, &msg, sizeof(Comunication));
+}
+
+void requestPhoto(int socket, char *id) {
+	Comunication msg;
+	
+	staticLenghtCopy(msg.name, "FREMEN", COMUNICATION_NAME_LEN);
+	msg.type = 'P';
+	staticLenghtCopy(msg.data, id, DATA_LEN);
+
 	write(socket, &msg, sizeof(Comunication));
 }

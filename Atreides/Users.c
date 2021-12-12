@@ -175,8 +175,10 @@ int newLogin(char *login, char *postal) {
 }
 
 User getUser(int id) {
+	User r = (User){NULL, -1, NULL};
+	
 	pthread_mutex_lock(&users_lock);
-	User r = usuaris.users[id];
+	if ((size_t)id < usuaris.len) r = usuaris.users[id];
 	pthread_mutex_unlock(&users_lock);
 	
 	return r;

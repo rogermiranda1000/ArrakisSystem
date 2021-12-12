@@ -62,8 +62,8 @@ int newLogin(char *login, char *postal);
 /**
  * Obtè un usuari a partir de la seva ID
  * @param id	ID del usuari
- *				/!\ Ha de ser menor a usuaris.len /!\
- * @return		Usuari guardat amb aquella ID
+ * @return		Usuari guardat amb aquella ID.
+ *				Si no existeix retorna un usuari amb tot NULL i codi postal -1
  */
 User getUser(int id);
 
