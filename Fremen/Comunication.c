@@ -274,14 +274,20 @@ int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char
 	free(fileSize);
 
 	// Enviem la trama inicial
-	write(socket, &msg, sizeof(Comunication));
+	if (write(socket, &msg, sizeof(Comunication)) != sizeof(Comunication)) {
+		close(photoFD);
+		return -2;
+	}
 	
 	// Enviem les dades
 	msg.type = 'D';
 	lseek(photoFD, 0, SEEK_SET);
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
 		read(photoFD, msg.data, DATA_LEN);
-		write(socket, &msg, sizeof(Comunication));
+		if (write(socket, &msg, sizeof(Comunication)) != sizeof(Comunication)) {
+			close(photoFD);
+			return -2;
+		}
 	}
 	
 	close(photoFD);

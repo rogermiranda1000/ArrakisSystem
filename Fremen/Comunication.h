@@ -150,6 +150,7 @@ void freeSearchResponse(SearchResults *data);
  * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
  * @retval 0		Tot OK
  * @retval -1		El fitxer no existeix
+ * @retval -2		SIGPIPE
  */
 int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char *envp[], void (*freeMallocs)());
 

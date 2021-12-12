@@ -49,6 +49,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	unsigned short port;
 
 	signal(SIGINT, ctrlCHandler);	// reprograma Control+C
+	signal(SIGPIPE, SIG_IGN);		// ignorem SIGPIPE
 	
 	if (argc < 2) {
 		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -65,6 +66,8 @@ int main(int argc, char *argv[], char *envp[]) {
 	char **output;
 	Comunication data;
 	SearchResults sr;
+	
+	int r;
 	
 	initCommands();
 	
@@ -172,8 +175,10 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				if (sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate) == -1) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+				r = sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate);
+				if (r != 0) {
+					if (r == -1) write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+					else lostConnection();
 					
 					freeCommand(SEND, &output);
 					break;
@@ -198,7 +203,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				requestPhoto(clientFD, output[0]);
 				
-				int r = getMsg(clientFD, &data);
+				r = getMsg(clientFD, &data);
 				if (r != PROTOCOL_SEND) {
 					if (r == PROTOCOL_UNKNOWN) lostConnection();
 					else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
