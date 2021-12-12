@@ -4,7 +4,7 @@
 #define DESCRIPTOR_ERROR 2
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-char *ip = NULL, *users_file_path = NULL;
+char *ip = NULL, *users_file_path = NULL, *directory = NULL;
 int socketFD;
 
 // TODO player FD
@@ -37,26 +37,40 @@ int socketFD;
 	free(buffer);												\
 })
 
-void ctrlCHandler() {
-	terminateThreads();
+
+/**
+ * Allibera tota memoria
+ */
+void terminate() {
 	close(socketFD);
 	
-	saveUsersFile(users_file_path);
+	terminateUsers();
 
 	free(ip);
 	free(users_file_path);
-	
+	free(directory);
+}
+
+void ctrlCHandler() {
+	terminateThreads(); // per alguna raó no ho puc posar a terminate()
+	saveUsersFile(users_file_path);
+	terminate();
 	
 	signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 	raise(SIGINT);
 }
+
+typedef struct {
+	int clientFD;
+	char **envp;
+} ThreadInfo;
 
 /**
  * Allibera tots els recursos de manageThread()
  * @param arg	Informació necesaria per alliberar els recursos
  */
 static void freeThread(void *arg) {
-	int clientFD = *((int*)arg);
+	int clientFD = ((ThreadInfo*)arg)->clientFD;
 	free(arg);
 	
 	close(clientFD);
@@ -79,7 +93,7 @@ static void *manageThread(void *arg) {
 	 * O|<id>\n -> login efectuat correctament
 	 **/
 	
-	int clientFD = *((int*)arg);
+	int clientFD = ((ThreadInfo*)arg)->clientFD;
 	// el free es fa a freeThread
 	pthread_cleanup_push(freeThread, arg);
 	
@@ -92,6 +106,9 @@ static void *manageThread(void *arg) {
 	int user_id = -1;
 	int search_postal;
 	SearchResults search_data;
+
+	char *tmp, tmp2[20];
+	int response;
 
 	while (!exit) {
 		switch(getMsg(clientFD, &data)) {
@@ -149,6 +166,43 @@ static void *manageThread(void *arg) {
 				
 				break;
 				
+			case PROTOCOL_SEND:
+				response = getPhoto(clientFD, directory, user_id, ((ThreadInfo*)arg)->envp, &terminate, &data, &tmp, tmp2);
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut send %s de %s %d\n", tmp, getUser(user_id).login, user_id);
+				if (response == 0) {
+					susPrintF(DESCRIPTOR_SCREEN, "Guardada com %s\n", tmp2);
+					setImage(user_id, tmp2);
+					
+					sendPhotoResponse(clientFD, "ATREIDES", true);
+				}
+				else {
+					if (response < 0) write(DESCRIPTOR_ERROR, ERROR_PROTOCOL, STATIC_STRING_LEN(ERROR_PROTOCOL)); // error en la trama
+					else write(DESCRIPTOR_ERROR, ERROR_MD5, STATIC_STRING_LEN(ERROR_MD5)); // error en l'md5
+					setImage(user_id, NULL); // com hem sobreescribit la imatge, s'ha d'eliminar
+					
+					sendPhotoResponse(clientFD, "ATREIDES", false);
+				}
+				break;
+				
+			case PROTOCOL_PHOTO:
+				susPrintF(DESCRIPTOR_SCREEN, "Rebut photo %s de %s %d\n", data.data, getUser(user_id).login, user_id);
+				
+				tmp = getUser(atoi(data.data)).image_type;
+				if (tmp != NULL && *tmp != '\0') {
+					strcat(data.data, ".");
+					strcat(data.data, tmp);
+				}
+				
+				susPrintF(DESCRIPTOR_SCREEN, "Enviament %s\n", data.data);
+				if (tmp == NULL || sendPhoto(clientFD, "ATREIDES", data.data, directory, ((ThreadInfo*)arg)->envp, &terminate) == -1) sendNoPhoto(clientFD);
+				else {
+					// el send photo ja es fa en la comparació d'adalt
+					getMsg(clientFD, &data); // fremen envia un OK o KO
+				}
+				write(DESCRIPTOR_SCREEN, INFO_SEND, STATIC_STRING_LEN(INFO_SEND));
+				
+				break;
+				
 			case PROTOCOL_LOGOUT:
 				if (user_id == -1) break;
 				susPrintF(DESCRIPTOR_SCREEN, "Rebut logout de %s %d\n", getUser(user_id).login, user_id);
@@ -169,7 +223,7 @@ static void *manageThread(void *arg) {
 	return NULL;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
 	struct sockaddr_in servidor;
 	unsigned short port;
 	
@@ -181,20 +235,23 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	
-	char *directory = NULL;
 	if (readConfig(argv[1], &ip, &port, &directory) == -1) {
 		write(DESCRIPTOR_ERROR, ERROR_CONFIG_FILE, STATIC_STRING_LEN(ERROR_CONFIG_FILE));
 		free(ip);
 		free(directory);
 		exit(EXIT_FAILURE);
 	}
-	concat(&users_file_path, ".%s/%s", directory, USERS_FILE);
-	free(directory);
+	concat(&users_file_path, "%s/%s", directory, USERS_FILE);
 	
 	loadUsersFile(users_file_path);
 	
 	// Crea el socket
 	if ((socketFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		
 		write(DESCRIPTOR_ERROR, ERROR_SOCKET, STATIC_STRING_LEN(ERROR_SOCKET));
 		exit(EXIT_FAILURE);
 	}
@@ -206,21 +263,34 @@ int main(int argc, char *argv[]) {
 
 	// Assigna la IP al socket
  	if (bind(socketFD, (struct sockaddr*) &servidor, sizeof(servidor)) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		close(socketFD);
+		
 		write(DESCRIPTOR_ERROR, ERROR_BIND, STATIC_STRING_LEN(ERROR_BIND));
 		exit(EXIT_FAILURE);
 	}
 
 	// Escolta conexions al socket
 	if (listen(socketFD, SOCKET_QUEUE) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		close(socketFD);
+		
 		write(DESCRIPTOR_ERROR, ERROR_LISTEN, STATIC_STRING_LEN(ERROR_LISTEN));
 		exit(EXIT_FAILURE);
 	}
 	
 	while (true) {
 		int clientFD = accept(socketFD, (struct sockaddr*) NULL, NULL);
+		ThreadInfo info = (ThreadInfo){clientFD, envp};
 		
 		// Creació del thread
-		if (createThread(&manageThread, &clientFD, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
+		if (createThread(&manageThread, &info, sizeof(ThreadInfo)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
 	}

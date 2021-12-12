@@ -49,6 +49,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	unsigned short port;
 
 	signal(SIGINT, ctrlCHandler);	// reprograma Control+C
+	signal(SIGPIPE, SIG_IGN);		// ignorem SIGPIPE
 	
 	if (argc < 2) {
 		write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -66,6 +67,8 @@ int main(int argc, char *argv[], char *envp[]) {
 	Comunication data;
 	SearchResults sr;
 	
+	int r;
+	
 	initCommands();
 	
 	while (current_status != EXIT) {
@@ -81,8 +84,8 @@ int main(int argc, char *argv[], char *envp[]) {
 			 * -- Fremen -> Atreides --
 			 * C|<nom>*<codi>\n -> login <nom> <codi>
 			 * s|<codi>\n -> search <codi>
-			 * [x] n|<file>\n -> send <file>
-			 * [x] p|<id>\n -> photo <id>
+			 * n|<file>\n -> send <file>
+			 * p|<id>\n -> photo <id>
 			 * Q|\n -> logout
 			 *
 			 * -- Atreides -> Fremen --
@@ -145,6 +148,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				if (sr.size == (size_t)-2) {
 					lostConnection();
+					freeCommand(SEARCH, &output);
 					break;
 				}
 				else if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
@@ -164,23 +168,6 @@ int main(int argc, char *argv[], char *envp[]) {
 				write(DESCRIPTOR_ERROR, ERROR_SEARCH_ARGS, STATIC_STRING_LEN(ERROR_SEARCH_ARGS));
 				break;
 				
-			case PHOTO:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(PHOTO, &output);
-					break;
-				}
-				
-				write(DESCRIPTOR_SCREEN, output[0], strlen(output[0])); // id
-				write(DESCRIPTOR_SCREEN, "\n", sizeof(char));
-				
-				freeCommand(PHOTO, &output);
-				break;
-				
-			case PHOTO_INVALID:
-				write(DESCRIPTOR_ERROR, ERROR_PHOTO_ARGS, STATIC_STRING_LEN(ERROR_PHOTO_ARGS));
-				break;
-				
 			case SEND:
 				if (clientID < 0) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
@@ -188,13 +175,64 @@ int main(int argc, char *argv[], char *envp[]) {
 					break;
 				}
 				
-				// output[0]
+				r = sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate);
+				if (r != 0) {
+					if (r == -1) write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+					else lostConnection();
+					
+					freeCommand(SEND, &output);
+					break;
+				}
+				
+				if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
+				else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 				
 				freeCommand(SEND, &output);
 				break;
 				
 			case SEND_INVALID:
 				write(DESCRIPTOR_ERROR, ERROR_SEND_ARGS, STATIC_STRING_LEN(ERROR_SEND_ARGS));
+				break;
+				
+			case PHOTO:
+				if (clientID < 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
+					freeCommand(PHOTO, &output);
+					break;
+				}
+				
+				requestPhoto(clientFD, output[0]);
+				
+				r = getMsg(clientFD, &data);
+				if (r != PROTOCOL_SEND) {
+					if (r == PROTOCOL_UNKNOWN) lostConnection();
+					else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
+					
+					freeCommand(PHOTO, &output);
+					break;
+				}
+				
+				if (strcmp(data.data, "FILE NOT FOUND") == 0) {
+					write(DESCRIPTOR_ERROR, ERROR_NO_PHOTO, STATIC_STRING_LEN(ERROR_NO_PHOTO));
+					
+					freeCommand(PHOTO, &output);
+					break;
+				}
+				
+				if (getPhoto(clientFD, directory, atoi(output[0]), envp, &terminate, &data, NULL, NULL) == 0) {
+					write(DESCRIPTOR_SCREEN, MSG_DOWNLOAD_PHOTO_OK, STATIC_STRING_LEN(MSG_DOWNLOAD_PHOTO_OK));
+					sendPhotoResponse(clientFD, "FREMEN", true);
+				}
+				else {
+					write(DESCRIPTOR_ERROR, ERROR_PHOTO, STATIC_STRING_LEN(ERROR_PHOTO));
+					sendPhotoResponse(clientFD, "FREMEN", false);
+				}
+				
+				freeCommand(PHOTO, &output);
+				break;
+				
+			case PHOTO_INVALID:
+				write(DESCRIPTOR_ERROR, ERROR_PHOTO_ARGS, STATIC_STRING_LEN(ERROR_PHOTO_ARGS));
 				break;
 				
 			case LOGOUT:

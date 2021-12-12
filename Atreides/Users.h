@@ -21,12 +21,18 @@
 typedef struct{
     char *login;
 	int postal;
+    char *image_type;
 } User;
 
 typedef struct {
 	User *users; // l'ordre és la ID (l'usuari de la posició 0 té l'ID 0, el de la posició 1 la ID 1...)
 	size_t len;
 } Users;
+
+/**
+ * Elimina tots els usuaris de la memoria interna i destrueix el mutex
+ */
+void terminateUsers();
 
 /**
  * Carrega a la variable interna els usuaris
@@ -38,7 +44,7 @@ typedef struct {
 int loadUsersFile(char *path);
 
 /**
- * Persisteix la variable interna dels usuaris, destruint-la
+ * Persisteix la variable interna dels usuaris
  * @param path Ruta on es troba el fitxer d'usuaris
  * @return 0 si OK, <0 si error
  */
@@ -56,8 +62,8 @@ int newLogin(char *login, char *postal);
 /**
  * Obtè un usuari a partir de la seva ID
  * @param id	ID del usuari
- *				/!\ Ha de ser menor a usuaris.len /!\
- * @return		Usuari guardat amb aquella ID
+ * @return		Usuari guardat amb aquella ID.
+ *				Si no existeix retorna un usuari amb tot NULL i codi postal -1
  */
 User getUser(int id);
 
@@ -68,3 +74,10 @@ User getUser(int id);
  * @return			Usuaris de la zona
  */
 SearchResults getUsersByPostal(int postal);
+
+/**
+ * Cambia la imatge d'un usuari
+ * @param user_id	Usuari a cambiar-li la imatge
+ * @param image		Nova imatge (NULL per eliminar-la)
+ */
+void setImage(int user_id, char *image);
