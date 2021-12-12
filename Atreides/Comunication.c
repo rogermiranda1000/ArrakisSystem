@@ -105,7 +105,7 @@ void sendLogout(int socket, char *name, int id) {
 	write(socket, &trama, sizeof(Comunication));
 }
 
-bool sendSearch(int socket, char *name, int id, char *postal) {
+void sendSearch(int socket, char *name, int id, char *postal) {
 	char *data;
 	Comunication trama;
 	staticLenghtCopy(trama.name, "FREMEN", COMUNICATION_NAME_LEN);
@@ -114,7 +114,7 @@ bool sendSearch(int socket, char *name, int id, char *postal) {
 	staticLenghtCopy(trama.data, data, DATA_LEN);
 	free(data);
 	
-	return write(socket, &trama, sizeof(Comunication)) == sizeof(Comunication);
+	write(socket, &trama, sizeof(Comunication));
 }
 
 int getSearch(Comunication *data) {
@@ -270,11 +270,11 @@ int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char
 	free(md5sum);
 	staticLenghtCopy(msg.data, data, DATA_LEN);
 
-	// Enviem la trama inicial
-	write(socket, &msg, sizeof(Comunication));
-
 	free(data);
 	free(fileSize);
+
+	// Enviem la trama inicial
+	write(socket, &msg, sizeof(Comunication));
 	
 	// Enviem les dades
 	msg.type = 'D';

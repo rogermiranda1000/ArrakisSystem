@@ -145,6 +145,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				if (sr.size == (size_t)-2) {
 					lostConnection();
+					freeCommand(SEARCH, &output);
 					break;
 				}
 				else if (sr.size == (size_t)-1) write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION)); // Atreides ha rebut una trama incorrecta
@@ -173,6 +174,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				
 				if (sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate) == -1) {
 					write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+					
 					freeCommand(SEND, &output);
 					break;
 				}
@@ -195,8 +197,11 @@ int main(int argc, char *argv[], char *envp[]) {
 				}
 				
 				requestPhoto(clientFD, output[0]);
-				if (getMsg(clientFD, &data) != PROTOCOL_SEND) {
-					write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
+				
+				int r = getMsg(clientFD, &data);
+				if (r != PROTOCOL_SEND) {
+					if (r == PROTOCOL_UNKNOWN) lostConnection();
+					else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 					
 					freeCommand(PHOTO, &output);
 					break;
