@@ -37,15 +37,24 @@ int socketFD;
 	free(buffer);												\
 })
 
-void ctrlCHandler() {
-	terminateThreads();
+
+/**
+ * Allibera tota memoria
+ */
+void terminate() {
 	close(socketFD);
 	
-	saveUsersFile(users_file_path);
+	terminateUsers();
 
 	free(ip);
 	free(users_file_path);
 	free(directory);
+}
+
+void ctrlCHandler() {
+	terminateThreads(); // per alguna raó no ho puc posar a terminate()
+	saveUsersFile(users_file_path);
+	terminate();
 	
 	signal(SIGINT, SIG_DFL); // deprograma (tot i que hauria de ser així per defecte, per alguna raó no funciona)
 	raise(SIGINT);
@@ -65,10 +74,6 @@ static void freeThread(void *arg) {
 	free(arg);
 	
 	close(clientFD);
-}
-
-void todoFree() {
-	
 }
 
 /**
@@ -159,7 +164,7 @@ static void *manageThread(void *arg) {
 				break;
 				
 			case PROTOCOL_SEND:
-				getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &todoFree, &data);
+				getPhoto(clientFD, directory, clientFD, ((ThreadInfo*)arg)->envp, &terminate, &data);
 				// TODO check if ok
 				// TODO send rersponse
 				break;
@@ -208,6 +213,11 @@ int main(int argc, char *argv[], char *envp[]) {
 	
 	// Crea el socket
 	if ((socketFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		
 		write(DESCRIPTOR_ERROR, ERROR_SOCKET, STATIC_STRING_LEN(ERROR_SOCKET));
 		exit(EXIT_FAILURE);
 	}
@@ -219,12 +229,24 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	// Assigna la IP al socket
  	if (bind(socketFD, (struct sockaddr*) &servidor, sizeof(servidor)) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		close(socketFD);
+		
 		write(DESCRIPTOR_ERROR, ERROR_BIND, STATIC_STRING_LEN(ERROR_BIND));
 		exit(EXIT_FAILURE);
 	}
 
 	// Escolta conexions al socket
 	if (listen(socketFD, SOCKET_QUEUE) < 0) {
+		free(ip);
+		free(directory);
+		free(users_file_path);
+		terminateUsers();
+		close(socketFD);
+		
 		write(DESCRIPTOR_ERROR, ERROR_LISTEN, STATIC_STRING_LEN(ERROR_LISTEN));
 		exit(EXIT_FAILURE);
 	}
@@ -234,7 +256,7 @@ int main(int argc, char *argv[], char *envp[]) {
 		ThreadInfo info = (ThreadInfo){clientFD, envp};
 		
 		// Creació del thread
-		if (createThread(&manageThread, &info, sizeof(int)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
+		if (createThread(&manageThread, &info, sizeof(ThreadInfo)) /* TODO la variable es destruirà abans de ser llegida? */ != 0) {
 			write(DESCRIPTOR_ERROR, ERROR_THREAD, STATIC_STRING_LEN(ERROR_THREAD));
 		}
 	}

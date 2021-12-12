@@ -324,6 +324,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna '<md5> *<nom fitxer>'
 	int r = (strcmp(md5sum, md5) != 0);
 	free(md5sum);
+	freeForkedPipeInfo(&fork_pipe);
 	
 	return r;
 }

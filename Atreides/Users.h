@@ -29,6 +29,11 @@ typedef struct {
 } Users;
 
 /**
+ * Elimina tots els usuaris de la memoria interna i destrueix el mutex
+ */
+void terminateUsers();
+
+/**
  * Carrega a la variable interna els usuaris
  * @param path	Ruta on es troba el fitxer d'usuaris
  * @retval 0	Tot OK
@@ -38,7 +43,7 @@ typedef struct {
 int loadUsersFile(char *path);
 
 /**
- * Persisteix la variable interna dels usuaris, destruint-la
+ * Persisteix la variable interna dels usuaris
  * @param path Ruta on es troba el fitxer d'usuaris
  * @return 0 si OK, <0 si error
  */

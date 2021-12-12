@@ -46,11 +46,18 @@ int addEntry(char *login, char *postal) {
  * Elimina tots els usuaris de la memoria interna
  */
 void emptyUsers() {
+	pthread_mutex_lock(&users_lock);
 	for (size_t x = 0; x < usuaris.len; x++) free(usuaris.users[x].login);
 	
 	free(usuaris.users);
 	usuaris.users = NULL;
 	usuaris.len = 0;
+	pthread_mutex_unlock(&users_lock);
+}
+
+void terminateUsers() {
+	emptyUsers(); // allibera memoria
+	pthread_mutex_destroy(&users_lock);
 }
 
 int loadUsersFile(char *path) {
@@ -97,12 +104,9 @@ int saveUsersFile(char *path) {
 		write(file, entry, concat(&entry, "%s,%d\n", usuaris.users[x].login, usuaris.users[x].postal));
 		free(entry);
 	}
-	
-	emptyUsers(); // allibera memoria
 	pthread_mutex_unlock(&users_lock);
 	
     close(file);
-	pthread_mutex_destroy(&users_lock);
 	
 	return 0;
 }

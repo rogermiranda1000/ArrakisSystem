@@ -39,7 +39,6 @@ typedef enum {
 	PROTOCOL_SEARCH,			// Fremen solicita una busqueda
 	PROTOCOL_SEARCH_RESPONSE,	// Atreides respon a Fremen sobre la busqueda
 	PROTOCOL_SEND,
-	PROTOCOL_SEND_DATA,
 	PROTOCOL_SEND_RESPONSE,
 	PROTOCOL_PHOTO,
 	PROTOCOL_PHOTO_RESPONSE,

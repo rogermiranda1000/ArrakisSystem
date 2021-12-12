@@ -43,10 +43,8 @@ MsgType getMsg(int socket, Comunication *data) {
 			return PROTOCOL_LOGOUT;
 			
 		case 'F':
-			return PROTOCOL_SEND;
-			
 		case 'D':
-			return PROTOCOL_SEND_DATA;
+			return PROTOCOL_SEND;
 			
 		case 'I':
 		case 'R':
@@ -304,7 +302,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	
 	while (file_size > 0) {
 		msg = getMsg(socket, &extra_data);
-		if (msg != PROTOCOL_SEND_DATA) return -2;
+		if (msg != PROTOCOL_SEND) return -2;
 		write(photo_fd, extra_data.data, (file_size > DATA_LEN) ? DATA_LEN : file_size);
 		
 		if (file_size > DATA_LEN) file_size -= DATA_LEN;
@@ -326,6 +324,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	readUntil(fdPipeInfo(fork_pipe, 0), &md5sum, ' '); // md5sum retorna '<md5> *<nom fitxer>'
 	int r = (strcmp(md5sum, md5) != 0);
 	free(md5sum);
+	freeForkedPipeInfo(&fork_pipe);
 	
 	return r;
 }
