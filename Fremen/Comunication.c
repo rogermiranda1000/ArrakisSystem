@@ -262,7 +262,7 @@ void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum) {
 	}
 }
 
-int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data) {
+int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data, char **original_image_name, char *final_image_name) {
 	char *ptr = data->data, *md5;
 	size_t file_size = 0;
 	MsgType msg;
@@ -271,6 +271,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	
 	// nom de la imatge (només ens és rellevant el '.X')
 	char *type = NULL;
+	*original_image_name = ptr;
 	while (*ptr != '*') {
 		if (*ptr == '.') type = ptr+1;
 		ptr++;
@@ -285,9 +286,7 @@ int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void 
 	concat(&path_name, "%s/%s", img_folder_path, file_name);
 	if ((photo_fd = open(path_name, O_WRONLY | O_CREAT, 00666)) < 0) return -1;
 	
-	char *buffer;
-	write(DESCRIPTOR_SCREEN, buffer, concat(&buffer, "Guardada com %s\n", file_name));
-	free(buffer);
+	strcpy(final_image_name, file_name);
 	free(file_name);
 	
 	// seguim tractant la trama original

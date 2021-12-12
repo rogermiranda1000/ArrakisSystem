@@ -31,15 +31,49 @@ Users usuaris = {NULL, 0};
  * Afegeix una entrada a la variable interna d'usuaris
  * @param login		Login del usuari
  * @param postal	Codi postal del usuari
+ * @param image_type Tipus d'imatge del usuari. NULL si cap, "\0" si sense tipus
  * @return			ID del usuari afegit
  */
-int addEntry(char *login, char *postal) {
+int addEntry(char *login, char *postal, char *image_type) {
 	usuaris.len++;
 	usuaris.users = (User*)realloc(usuaris.users, sizeof(User)*usuaris.len);
+	
 	usuaris.users[usuaris.len-1].login = (char*)malloc(sizeof(char)*(strlen(login)+1));
 	strcpy(usuaris.users[usuaris.len-1].login, login);
+	
 	usuaris.users[usuaris.len-1].postal = atoi(postal);
+	
+	usuaris.users[usuaris.len-1].image_type = NULL;
+	if (image_type != NULL) {
+		usuaris.users[usuaris.len-1].image_type = (char*)malloc(sizeof(char)*(strlen(image_type)+1));
+		strcpy(usuaris.users[usuaris.len-1].image_type, image_type);
+	}
+	
 	return usuaris.len-1;
+}
+
+void setImage(int user_id, char *image) {
+	char *image_type = "";
+	if (image == NULL) {
+		pthread_mutex_lock(&users_lock);
+		free(usuaris.users[user_id].image_type);
+		usuaris.users[user_id].image_type = NULL;
+		pthread_mutex_unlock(&users_lock);
+	}
+	else {
+		// buscar la extensió
+		while (*image != '\0') {
+			if (*image == '.') image_type = image+1;
+			image++;
+		}
+		
+		pthread_mutex_lock(&users_lock);
+		free(usuaris.users[user_id].image_type);
+		
+		usuaris.users[user_id].image_type = (char*)malloc(sizeof(char)*(strlen(image_type)+1));
+		strcpy(usuaris.users[user_id].image_type, image_type);
+		pthread_mutex_unlock(&users_lock);
+	}
 }
 
 /**
@@ -47,7 +81,10 @@ int addEntry(char *login, char *postal) {
  */
 void emptyUsers() {
 	pthread_mutex_lock(&users_lock);
-	for (size_t x = 0; x < usuaris.len; x++) free(usuaris.users[x].login);
+	for (size_t x = 0; x < usuaris.len; x++) {
+		free(usuaris.users[x].login);
+		free(usuaris.users[x].image_type);
+	}
 	
 	free(usuaris.users);
 	usuaris.users = NULL;
@@ -66,23 +103,25 @@ int loadUsersFile(char *path) {
     if (file < 0) return -1; // no hi ha fitxer -> deixar usuaris tal com està
 
     int num_users = readInteger(file, NULL);
-    char *userFound, *postalFound;
+    char *userFound, *postalFound, *image_type;
     for (int userId = 0; userId < num_users; userId++) {
 		userFound = NULL;
 		postalFound = NULL;
 		
-        if (readUntil(file, &userFound,',') == 0 || readUntil(file, &postalFound,'\n') == 0) {
+        if (readUntil(file, &userFound,',') == 0 || readUntil(file, &postalFound,',') == 0 || readUntil(file, &image_type,'\n') == 0) {
 			free(userFound);
 			free(postalFound);
+			free(image_type);
 			close(file);
             return -2;
         }
 		
 		// no cal protegir (en el moment que es fa loadUsersFile() no hi ha cap thread creat)
-		addEntry(userFound, postalFound);
+		addEntry(userFound, postalFound, (strcmp(image_type, "-") == 0) ? NULL : image_type);
 		
 		free(userFound);
 		free(postalFound);
+		free(image_type);
     }
     
     close(file);
@@ -101,7 +140,7 @@ int saveUsersFile(char *path) {
 	free(entry);
 	
 	for (size_t x = 0; x < usuaris.len; x++) {
-		write(file, entry, concat(&entry, "%s,%d\n", usuaris.users[x].login, usuaris.users[x].postal));
+		write(file, entry, concat(&entry, "%s,%d,%s\n", usuaris.users[x].login, usuaris.users[x].postal, (usuaris.users[x].image_type == NULL) ? "-" : usuaris.users[x].image_type));
 		free(entry);
 	}
 	pthread_mutex_unlock(&users_lock);
@@ -127,7 +166,7 @@ int searchUserByName(char *login) {
 int newLogin(char *login, char *postal) {
 	pthread_mutex_lock(&users_lock);
     int r = searchUserByName(login);
-	if (r == -1) r = addEntry(login, postal); // no existeix -> afegir
+	if (r == -1) r = addEntry(login, postal, NULL); // no existeix -> afegir
 	pthread_mutex_unlock(&users_lock);
 	
 	// exiteix

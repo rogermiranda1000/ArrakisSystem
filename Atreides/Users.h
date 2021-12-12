@@ -21,6 +21,7 @@
 typedef struct{
     char *login;
 	int postal;
+    char *image_type;
 } User;
 
 typedef struct {
@@ -73,3 +74,10 @@ User getUser(int id);
  * @return			Usuaris de la zona
  */
 SearchResults getUsersByPostal(int postal);
+
+/**
+ * Cambia la imatge d'un usuari
+ * @param user_id	Usuari a cambiar-li la imatge
+ * @param image		Nova imatge (NULL per eliminar-la)
+ */
+void setImage(int user_id, char *image);

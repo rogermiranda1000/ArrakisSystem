@@ -161,12 +161,14 @@ void sendPhoto(int socket, char *photoName, int photoFD, char *md5sum);
  * @param envp 			Variables d'envirement
  * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
  * @param data 			Primera trama llegida
+ * @param original_image_name 	Punter a on guardar el nom de la imatge (no cal fer free; apunta a data)
+ * @param final_image_name 		char[] on guardar el nom final de la imatge (no pot ser dinamic)
  * @retval -1			Error obrint el fitxer
  * @retval -2			Error en la trama
  * @retval >0			Error en MD5
  * @retval 0			Tot OK
  */
-int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data);
+int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data, char **original_image_name, char *final_image_name);
 
 /**
  * Retorna la informació corresponent a la imatge
