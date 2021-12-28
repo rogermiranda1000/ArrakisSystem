@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ProgramLauncher.h"
+#include "Configreader.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -14,7 +15,7 @@
 
 #define MSG_INIT    "Starting Harkonen\n"
 #define MSG_SEARCH  "Scanning pids\n"
-#define MSG_KILL    "Killing pid %d"
+#define MSG_KILL    "Killing pid "
 #define MSG_EXIT    "Exiting...\n"
 
 #define ERR_ARGS    "Please enter one argument stating the number of seconds between deletions.\n\n"
