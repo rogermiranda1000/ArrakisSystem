@@ -185,7 +185,7 @@ int main(int argc, char *argv[], char *envp[]) {
 			case SEND:
 				requireLogin(freeCommand(SEARCH, &output), break);
 				
-				switch (sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate)) {
+				switch (sendPhoto(clientFD, "FREMEN", output[0], directory, envp, &terminate)) {
 					case 0:
 						// tot ok
 						if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
