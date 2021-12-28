@@ -20,6 +20,20 @@ char *name;
 	free(buffer);												\
 })
 
+/**
+ * Comproba si l'uauari està loguejat. De no ser així es fa free del regex,
+ * es mostra el missatge d'error i s'interrumpeix l'execució
+ * @param regex_free 	freeCommand(<regex cridat>, &output)
+ * @param quit			Comanda que interrumpirà l'execució del codi. return, break, exit...
+ */
+#define requireLogin(regex_free, quit) ({														\
+	if (clientID < 0) {																			\
+		write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));	\
+		regex_free;																				\
+		quit;																					\
+	}																							\
+})
+
 void ctrlCHandler() {
 	if (current_status == WAITING) {
 		secureTermination();
@@ -34,6 +48,10 @@ void ctrlCHandler() {
 	}
 }
 
+/**
+ * S'executa quan es perd la conexió amb Atreides.
+ * Reinicia el clientID (indica si eestà o no conectat) i tanca el socket
+ */
 void lostConnection() {
 	write(DESCRIPTOR_ERROR, WARNING_LOST_CONNECTION, STATIC_STRING_LEN(WARNING_LOST_CONNECTION));
 	
@@ -136,11 +154,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEARCH:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(SEARCH, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
 				sendSearch(clientFD, name, clientID, output[0]);
 				
@@ -169,11 +183,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEND:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(SEND, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
 				r = sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate);
 				if (r != 0) {
@@ -195,17 +205,13 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case PHOTO:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(PHOTO, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
 				requestPhoto(clientFD, output[0]);
 				
 				r = getMsg(clientFD, &data);
 				if (r != PROTOCOL_SEND) {
-					if (r == PROTOCOL_UNKNOWN) lostConnection();
+					if (r == PROTOCOL_UNKNOWN) lostConnection(); // s'ha perdut la conexió
 					else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 					
 					freeCommand(PHOTO, &output);
