@@ -79,6 +79,8 @@ int main(int argc, char *argv[], char *envp[]) {
 		exit(EXIT_FAILURE);
 	}
 	
+	startCleaner(directory, timeClean, envp, &terminate);
+	
 	write(DESCRIPTOR_SCREEN, MSG_INIT, STATIC_STRING_LEN(MSG_INIT));
 	
 	char **output;
@@ -296,6 +298,7 @@ void terminate() {
 	
 	free(input);
 	free(ip);
-	free(directory);
 	free(name);
+	free(directory);
+	directory = NULL; // per si FileCleaner salta
 }
