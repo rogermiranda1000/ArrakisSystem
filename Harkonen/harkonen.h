@@ -20,7 +20,6 @@
 
 #define ERR_ARGS    "Please enter one argument stating the number of seconds between deletions.\n\n"
 
-#define CMD_WHO     "whoami\n"
-#define CMD_PIDS    "ps -u %S --no-headers\n"
+#define CMD_WHO     "whoami"
 
 int main(int argc, char *argv[], char *envp[]);
