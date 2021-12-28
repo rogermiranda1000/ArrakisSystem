@@ -12,6 +12,8 @@
 #define COMUNICATION_NAME_LEN 	15
 #define DATA_LEN				240
 
+#define PHOTO_EXTENSION			"jpg"
+
 /**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
  * /!\ Cal fer el free del buffer /!\
@@ -150,7 +152,8 @@ void freeSearchResponse(SearchResults *data);
  * @param freeMallocs	Funció per alliberar la memoria del pare al fer el fork
  * @retval 0		Tot OK
  * @retval -1		El fitxer no existeix
- * @retval -2		SIGPIPE
+ * @retval -2		El fitxer té una extensió invàl·lida
+ * @retval -3		SIGPIPE
  */
 int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char *envp[], void (*freeMallocs)());
 

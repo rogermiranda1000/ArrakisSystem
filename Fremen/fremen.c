@@ -185,17 +185,28 @@ int main(int argc, char *argv[], char *envp[]) {
 			case SEND:
 				requireLogin(freeCommand(SEARCH, &output), break);
 				
-				r = sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate);
-				if (r != 0) {
-					if (r == -1) write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
-					else lostConnection();
+				switch (sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate)) {
+					case 0:
+						// tot ok
+						if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
+						else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
+						break;
+						
+					case -1:
+						// no file
+						write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+						break;
 					
-					freeCommand(SEND, &output);
-					break;
+					case -2:
+						// invalid extension
+						write(DESCRIPTOR_ERROR, ERROR_PHOTO_EXTENSION, STATIC_STRING_LEN(ERROR_PHOTO_EXTENSION));
+						break;
+						
+					case -3:
+						// no connection
+						lostConnection();
+						break;
 				}
-				
-				if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
-				else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 				
 				freeCommand(SEND, &output);
 				break;

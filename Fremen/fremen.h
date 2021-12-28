@@ -35,6 +35,7 @@
 #define ERROR_COMUNICATION		"S'esperava un altre resposta per part d'Atreides\n"
 #define ERROR_ID_ASSIGNMENT		"Atreides ha retornat una ID invàl·lida\n"
 #define ERROR_NO_FILE			"El fitxer no existeix\n"
+#define ERROR_PHOTO_EXTENSION	"Les imatges han de ser .jpg\n"
 #define ERROR_NO_PHOTO			"No hi ha foto registrada.\n"
 #define ERROR_PHOTO				"Error al descarregar la imatge\n"
 
