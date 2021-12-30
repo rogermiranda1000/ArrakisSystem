@@ -73,15 +73,15 @@ size_t readUntil(int fd, char **buffer, char delimiter) {
 	return size;
 }
 
+bool interrupted = false;
 char *command = NULL;
 
-void ctrlCHandler() {
+void freeEverything() {
     free(command);
 }
 
-void quit() {
-	write(DESCRIPTOR_SCREEN, MSG_EXIT, STATIC_STRING_LEN(MSG_EXIT));
-	ctrlCHandler();
+void ctrlCHandler() {
+	interrupted = true;
 }
 
 /**
@@ -90,18 +90,18 @@ void quit() {
  * @return		PID aleatori; -1 si el FD no conté cap
  */
 int getRandomPID(int fd) {
-	int *pids = NULL;
+	int *pids = NULL, current;
 	size_t pid_size = 0;
-	
-	// el primer, per alguna raó, és el PID 1; aixó passa si posem '--format=%P'
 	char *info;
-	readUntil(fd, &info, '\n');
-	free(info);
 	
 	readUntil(fd, &info, '\n');
 	while (*info) {
-		pids = (int*)realloc(pids, sizeof(int)*(++pid_size));
-		pids[pid_size-1] = atoi(info);
+		current = atoi(info);
+		// en alguns casos surt el PID 1 (culpa de '--format=%P')
+		if (current > 1) {
+			pids = (int*)realloc(pids, sizeof(int)*(++pid_size));
+			pids[pid_size-1] = current;
+		}
 		
 		free(info);
 		readUntil(fd, &info, '\n');
@@ -113,7 +113,7 @@ int getRandomPID(int fd) {
 }
 
 int main(int argc, char *argv[], char *envp[]) {
-    signal(SIGINT, quit);
+    signal(SIGINT, ctrlCHandler);
 
     if (argc != 2) {
         write(DESCRIPTOR_ERROR, ERROR_ARGS, STATIC_STRING_LEN(ERROR_ARGS));
@@ -129,7 +129,7 @@ int main(int argc, char *argv[], char *envp[]) {
     ForkedPipeInfo fork_pipe;
     char *command1 = (char *)malloc(sizeof(char) * (STATIC_STRING_LEN(CMD_WHO) + 1));
     strcpy(command1, CMD_WHO);
-    executeProgramLineWithPipe(&fork_pipe, &command1, envp, ctrlCHandler);
+    executeProgramLineWithPipe(&fork_pipe, &command1, envp, freeEverything);
     char* who;
     readUntil(fdPipeInfo(fork_pipe, 0), &who, '\n');
 	freeForkedPipeInfo(&fork_pipe);
@@ -139,12 +139,12 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	char *command2;
 	int random_pid;
-    while (true) {
+    while (!interrupted) {
 		write(DESCRIPTOR_SCREEN, MSG_SEARCH, STATIC_STRING_LEN(MSG_SEARCH));
 		
         command2 = (char *)malloc(sizeof(char) * (strlen(command) + 1));
         strcpy(command2, command);
-        executeProgramLineWithPipe(&fork_pipe, &command2, envp, ctrlCHandler);
+        executeProgramLineWithPipe(&fork_pipe, &command2, envp, freeEverything);
         random_pid = getRandomPID(fdPipeInfo(fork_pipe, 0));
         freeForkedPipeInfo(&fork_pipe);
 		
@@ -152,11 +152,14 @@ int main(int argc, char *argv[], char *envp[]) {
 			susPrintF(DESCRIPTOR_SCREEN, "killing pid %d\n", random_pid);
 			
 			concat(&command2, "kill -9 %d", random_pid);
-			executeProgramLine(&command2, envp, ctrlCHandler);
+			executeProgramLine(&command2, envp, freeEverything);
 		}
 		
         sleep(seconds);
     }
+	
+	write(DESCRIPTOR_SCREEN, MSG_EXIT, STATIC_STRING_LEN(MSG_EXIT));
+	freeEverything();
 	
 	return 0;
 }
