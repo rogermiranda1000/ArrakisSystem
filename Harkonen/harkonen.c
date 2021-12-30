@@ -108,8 +108,11 @@ int getRandomPID(int fd) {
 	}
 	free(info);
 	
-	if (pid_size == 0) return -1;
-	return pids[rand() % pid_size];
+	if (pid_size == 0) current = -1;
+	else current = pids[rand() % pid_size];
+	
+	free(pids);
+	return current;
 }
 
 int main(int argc, char *argv[], char *envp[]) {
