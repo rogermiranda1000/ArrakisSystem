@@ -20,6 +20,20 @@ char *name;
 	free(buffer);												\
 })
 
+/**
+ * Comproba si l'uauari està loguejat. De no ser així es fa free del regex,
+ * es mostra el missatge d'error i s'interrumpeix l'execució
+ * @param regex_free 	freeCommand(<regex cridat>, &output)
+ * @param quit			Comanda que interrumpirà l'execució del codi. return, break, exit...
+ */
+#define requireLogin(regex_free, quit) ({														\
+	if (clientID < 0) {																			\
+		write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));	\
+		regex_free;																				\
+		quit;																					\
+	}																							\
+})
+
 void ctrlCHandler() {
 	if (current_status == WAITING) {
 		secureTermination();
@@ -34,6 +48,10 @@ void ctrlCHandler() {
 	}
 }
 
+/**
+ * S'executa quan es perd la conexió amb Atreides.
+ * Reinicia el clientID (indica si eestà o no conectat) i tanca el socket
+ */
 void lostConnection() {
 	write(DESCRIPTOR_ERROR, WARNING_LOST_CONNECTION, STATIC_STRING_LEN(WARNING_LOST_CONNECTION));
 	
@@ -60,6 +78,8 @@ int main(int argc, char *argv[], char *envp[]) {
 		write(DESCRIPTOR_ERROR, ERROR_FILE, STATIC_STRING_LEN(ERROR_FILE));
 		exit(EXIT_FAILURE);
 	}
+	
+	startCleaner(directory, timeClean, envp, &terminate);
 	
 	write(DESCRIPTOR_SCREEN, MSG_INIT, STATIC_STRING_LEN(MSG_INIT));
 	
@@ -136,11 +156,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEARCH:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(SEARCH, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
 				sendSearch(clientFD, name, clientID, output[0]);
 				
@@ -169,23 +185,30 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case SEND:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(SEND, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
-				r = sendPhoto(clientFD, "FREMEN", output[0], ".", envp, &terminate);
-				if (r != 0) {
-					if (r == -1) write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
-					else lostConnection();
+				switch (sendPhoto(clientFD, "FREMEN", output[0], directory, envp, &terminate)) {
+					case 0:
+						// tot ok
+						if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
+						else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
+						break;
+						
+					case -1:
+						// no file
+						write(DESCRIPTOR_ERROR, ERROR_NO_FILE, STATIC_STRING_LEN(ERROR_NO_FILE));
+						break;
 					
-					freeCommand(SEND, &output);
-					break;
+					case -2:
+						// invalid extension
+						write(DESCRIPTOR_ERROR, ERROR_PHOTO_EXTENSION, STATIC_STRING_LEN(ERROR_PHOTO_EXTENSION));
+						break;
+						
+					case -3:
+						// no connection
+						lostConnection();
+						break;
 				}
-				
-				if (getMsg(clientFD, &data) == PROTOCOL_SEND_RESPONSE && data.type == 'I') write(DESCRIPTOR_SCREEN, MSG_SEND_PHOTO_OK, STATIC_STRING_LEN(MSG_SEND_PHOTO_OK));
-				else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 				
 				freeCommand(SEND, &output);
 				break;
@@ -195,17 +218,13 @@ int main(int argc, char *argv[], char *envp[]) {
 				break;
 				
 			case PHOTO:
-				if (clientID < 0) {
-					write(DESCRIPTOR_ERROR, ERROR_NO_CONNECTION, STATIC_STRING_LEN(ERROR_NO_CONNECTION));
-					freeCommand(PHOTO, &output);
-					break;
-				}
+				requireLogin(freeCommand(SEARCH, &output), break);
 				
 				requestPhoto(clientFD, output[0]);
 				
 				r = getMsg(clientFD, &data);
 				if (r != PROTOCOL_SEND) {
-					if (r == PROTOCOL_UNKNOWN) lostConnection();
+					if (r == PROTOCOL_UNKNOWN) lostConnection(); // s'ha perdut la conexió
 					else write(DESCRIPTOR_ERROR, ERROR_COMUNICATION, STATIC_STRING_LEN(ERROR_COMUNICATION));
 					
 					freeCommand(PHOTO, &output);
@@ -279,6 +298,7 @@ void terminate() {
 	
 	free(input);
 	free(ip);
-	free(directory);
 	free(name);
+	free(directory);
+	directory = NULL; // per si FileCleaner salta
 }
