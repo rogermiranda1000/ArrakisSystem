@@ -1,13 +1,14 @@
 #pragma once
 
 #include "ProgramLauncher.h"
-#include "ConfigReader.h"
 
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h> // exit
 #include <unistd.h>
 #include <stdio.h>	// snprintf
+#include <time.h>	// time(NULL)
+#include <fcntl.h>	// socket non-blocking mode
 
 #define DESCRIPTOR_SCREEN 1
 #define DESCRIPTOR_ERROR 2
@@ -16,7 +17,7 @@
 
 #define MSG_INIT	"Starting Harkonen\n"
 #define MSG_SEARCH	"Scanning pids\n"
-#define MSG_KILL	"Killing pid "
+#define MSG_KILL	"Killing pid\n"
 #define MSG_EXIT	"Exiting...\n"
 
 #define ERROR_ARGS	"Please enter one argument stating the number of seconds between deletions.\n\n"
