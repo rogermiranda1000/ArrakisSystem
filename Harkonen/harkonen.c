@@ -96,12 +96,8 @@ int getRandomPID(int fd) {
 	
 	readUntil(fd, &info, '\n');
 	while (*info) {
-		current = atoi(info);
-		// en alguns casos surt el PID 1 (culpa de '--format=%P')
-		if (current > 1) {
-			pids = (int*)realloc(pids, sizeof(int)*(++pid_size));
-			pids[pid_size-1] = current;
-		}
+		pids = (int*)realloc(pids, sizeof(int)*(++pid_size));
+		pids[pid_size-1] = atoi(info);
 		
 		free(info);
 		readUntil(fd, &info, '\n');
@@ -113,6 +109,25 @@ int getRandomPID(int fd) {
 	
 	free(pids);
 	return current;
+}
+
+/**
+ * Obtè el nom d'usuari actiu
+ * /!\ Cal fer el free del resultat /!\
+ * @param envp			Array de variables de usuario
+ * @param freeMallocs	Función para aliberar la memoria del padre al hacer el fork
+ * @return 				Nom d'usuari
+ */
+char *getCurrentUser(char *envp[], void (*freeMallocs)()) {
+	ForkedPipeInfo fork_pipe;
+    char *cmd = (char *)malloc(sizeof(char) * (STATIC_STRING_LEN("whoami") + 1));
+    strcpy(cmd, "whoami");
+    executeProgramLineWithPipe(&fork_pipe, &cmd, envp, freeMallocs /* realment no s'ha fet cap malloc, així que no allibera res */);
+	
+    char* who;
+    readUntil(fdPipeInfo(fork_pipe, 0), &who, '\n');
+	freeForkedPipeInfo(&fork_pipe);
+	return who;
 }
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -129,18 +144,12 @@ int main(int argc, char *argv[], char *envp[]) {
 
     int seconds = atoi(argv[1]);
 
-    ForkedPipeInfo fork_pipe;
-    char *command1 = (char *)malloc(sizeof(char) * (STATIC_STRING_LEN(CMD_WHO) + 1));
-    strcpy(command1, CMD_WHO);
-    executeProgramLineWithPipe(&fork_pipe, &command1, envp, freeEverything);
-    char* who;
-    readUntil(fdPipeInfo(fork_pipe, 0), &who, '\n');
-	freeForkedPipeInfo(&fork_pipe);
-    
-    concat(&command, "ps -u %s --no-headers --format=%%P", who);
+    char *who = getCurrentUser(envp, freeEverything);
+    concat(&command, "pgrep -f -u %s " REGEX_ARRAKIS, who);
     free(who);
 
 	char *command2;
+	ForkedPipeInfo fork_pipe;
 	int random_pid;
     while (!interrupted) {
 		write(DESCRIPTOR_SCREEN, MSG_SEARCH, STATIC_STRING_LEN(MSG_SEARCH));
@@ -151,11 +160,11 @@ int main(int argc, char *argv[], char *envp[]) {
         random_pid = getRandomPID(fdPipeInfo(fork_pipe, 0));
         freeForkedPipeInfo(&fork_pipe);
 		
-		if (random_pid != -1) {
+		if (random_pid < 2) write(DESCRIPTOR_SCREEN, MSG_NOT_FOUND, STATIC_STRING_LEN(MSG_NOT_FOUND));
+		else {
 			susPrintF(DESCRIPTOR_SCREEN, "killing pid %d\n", random_pid);
 			
-			concat(&command2, "kill -9 %d", random_pid);
-			executeProgramLine(&command2, envp, freeEverything);
+			if (kill(random_pid, SIGKILL) != 0) write(DESCRIPTOR_ERROR, ERROR_KILL, STATIC_STRING_LEN(ERROR_KILL));
 		}
 		
         sleep(seconds);
