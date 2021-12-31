@@ -13,15 +13,15 @@
 #define DESCRIPTOR_SCREEN 1
 #define DESCRIPTOR_ERROR 2
 
+#define REGEX_ARRAKIS			"Atreides|Fremen"
+
 #define STATIC_STRING_LEN(str) (sizeof(str)/sizeof(char))
 
-#define MSG_INIT	"Starting Harkonen\n"
-#define MSG_SEARCH	"Scanning pids\n"
-#define MSG_KILL	"Killing pid\n"
-#define MSG_EXIT	"Exiting...\n"
+#define MSG_INIT		"Starting Harkonen\n"
+#define MSG_SEARCH		"Scanning pids\n"
+#define MSG_NOT_FOUND	"Arrakis' processes not found\n"
+#define MSG_EXIT		"Exiting...\n"
 
 #define ERROR_ARGS	"Please enter one argument stating the number of seconds between deletions.\n\n"
-
-#define CMD_WHO     "whoami"
 
 int main(int argc, char *argv[], char *envp[]);
