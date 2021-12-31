@@ -164,8 +164,7 @@ int main(int argc, char *argv[], char *envp[]) {
 		else {
 			susPrintF(DESCRIPTOR_SCREEN, "killing pid %d\n", random_pid);
 			
-			concat(&command2, "kill -9 %d", random_pid);
-			executeProgramLine(&command2, envp, freeEverything);
+			if (kill(random_pid, SIGKILL) != 0) write(DESCRIPTOR_ERROR, ERROR_KILL, STATIC_STRING_LEN(ERROR_KILL));
 		}
 		
         sleep(seconds);
