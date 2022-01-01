@@ -260,7 +260,7 @@ int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char
 	
 	// obtenim l'extensió
 	getFileNameInfo(photo_name, '\0', NULL, &type);
-	if (type == NULL || strcmp(type, PHOTO_EXTENSION) != 0) return -2;
+	if (type == NULL || (strcmp(type, "jpg") != 0 && strcmp(type, "JPG") != 0)) return -2;
 	
 	int photoFD;
 	char *file_path;

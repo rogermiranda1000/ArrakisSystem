@@ -12,8 +12,6 @@
 #define COMUNICATION_NAME_LEN 	15
 #define DATA_LEN				240
 
-#define PHOTO_EXTENSION			"jpg"
-
 /**
  * Donat un format i els paràmetres (de la mateixa forma que es pasen a sprintf), retorna la string
  * /!\ Cal fer el free del buffer /!\
