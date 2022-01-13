@@ -14,11 +14,6 @@ typedef struct {
 } Thread;
 
 /**
- * Control d'acces a la LinkedList
- */
-pthread_mutex_t threads_lock = PTHREAD_MUTEX_INITIALIZER;
-
-/**
  * LinkedList
  */
 Node *head = NULL;
@@ -31,11 +26,8 @@ Node *getNewNode() {
 	Node *node = (Node*)malloc(sizeof(Node));
 	node->hasEnded = false;
 	
-	// no es protegeix per getNewNode() [només es crida des del pare]; es protegeix per les altres funcions que criden els fills
-	pthread_mutex_lock(&threads_lock);
 	node->next = head;
 	head = node;
-	pthread_mutex_unlock(&threads_lock);
 	
 	return node;
 }
@@ -52,8 +44,6 @@ void removeFromList(Node *node, Node *pre) {
 }
 
 void gc() {
-	// no es protegeix per gc() [només es crida des del pare]; es protegeix per les altres funcions que criden els fills
-	pthread_mutex_lock(&threads_lock);
 	Node *current = head, *pre = NULL, *tmp;
 	while(current != NULL) {
 		tmp = current->next;
@@ -64,14 +54,11 @@ void gc() {
 		else pre = current;
 		current = tmp;
 	}
-	pthread_mutex_unlock(&threads_lock);
 }
 
 void terminateThreads() {
 	gc();
 	
-	// no es protegeix per terminateThreads() [només es crida des del pare]; es protegeix per les altres funcions que criden els fills
-	pthread_mutex_lock(&threads_lock);
 	Node *current = head, *next;
 	head = NULL;
 	while(current != NULL) {
@@ -83,9 +70,6 @@ void terminateThreads() {
 		
 		current = next;
 	}
-	pthread_mutex_unlock(&threads_lock);
-	
-	pthread_mutex_destroy(&threads_lock);
 }
 
 /**

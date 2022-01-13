@@ -22,6 +22,27 @@ void staticLenghtCopy(char *desti, char *origen, size_t lenght) {
 	}
 }
 
+/**
+ * Extreu el nom i extensió del fitxer
+ * /!\ No cal free; si es destrueix 'str' es destrueixen les demés /!\
+ * /!\ 'str' es modificarà (s'agefeix un '\0' un cop trobat 'delimiter') /!\
+ * @param str				String on comença el nom del fitxer
+ * @param delimiter			Caracter on pararà de llegir
+ * @param file_name			On guardarà el nom del fitxer (+ extensió); NULL si no es vol guardar
+ * @param file_extension	On guardarà la extensió; NULL si no es vol guardar
+ * @return					On s'ha quedat d''str'
+ */
+char *getFileNameInfo(char *str, char delimiter, char **file_name, char **file_extension) {
+	if (file_extension != NULL) *file_extension = NULL;
+	if (file_name != NULL) *file_name = str;
+	while (*str != delimiter) {
+		if (*str == '.' && file_extension != NULL) *file_extension = str+1;
+		str++;
+	}
+	*str = '\0'; // per la lectura de després
+	return str+1; // elimina el '*'
+}
+
 MsgType getMsg(int socket, Comunication *data) {
 	if (read(socket, data, sizeof(Comunication)) != sizeof(Comunication)) return PROTOCOL_UNKNOWN;
 	switch(data->type) {
@@ -232,10 +253,14 @@ void freeSearchResponse(SearchResults *data) {
 }
 
 int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char *envp[], void (*freeMallocs)()) {
-	char *data;
+	char *data, *type;
 	Comunication msg;
 	char *fileSize;
 	int fileBytes;
+	
+	// obtenim l'extensió
+	getFileNameInfo(photo_name, '\0', NULL, &type);
+	if (type == NULL || (strcmp(type, "jpg") != 0 && strcmp(type, "JPG") != 0)) return -2;
 	
 	int photoFD;
 	char *file_path;
@@ -274,14 +299,20 @@ int sendPhoto(int socket, char *origin, char *photo_name, char *photo_path, char
 	free(fileSize);
 
 	// Enviem la trama inicial
-	write(socket, &msg, sizeof(Comunication));
+	if (write(socket, &msg, sizeof(Comunication)) != sizeof(Comunication)) {
+		close(photoFD);
+		return -3;
+	}
 	
 	// Enviem les dades
 	msg.type = 'D';
 	lseek(photoFD, 0, SEEK_SET);
 	for (int i = 0; i < fileBytes; i+= DATA_LEN) {
 		read(photoFD, msg.data, DATA_LEN);
-		write(socket, &msg, sizeof(Comunication));
+		if (write(socket, &msg, sizeof(Comunication)) != sizeof(Comunication)) {
+			close(photoFD);
+			return -3;
+		}
 	}
 	
 	close(photoFD);
@@ -299,21 +330,13 @@ void sendNoPhoto(int socket) {
 }
 
 int getPhoto(int socket, char *img_folder_path, int user_id, char *envp[], void (*freeMallocs)(), Comunication *data, char **original_image_name, char *final_image_name) {
-	char *ptr = data->data, *md5;
+	char *ptr = data->data, *md5, *type;
 	size_t file_size = 0;
 	MsgType msg;
 	Comunication extra_data;
 	int photo_fd;
 	
-	// nom de la imatge (només ens és rellevant el '.X')
-	char *type = NULL;
-	if (original_image_name != NULL) *original_image_name = ptr;
-	while (*ptr != '*') {
-		if (*ptr == '.') type = ptr+1;
-		ptr++;
-	}
-	*ptr = '\0'; // per la lectura de després
-	ptr++; // elimina el '*'
+	ptr = getFileNameInfo(ptr, '*', original_image_name, &type);
 	
 	// creem el FD
 	char *path_name, *file_name;
